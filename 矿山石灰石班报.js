@@ -9,9 +9,17 @@ css.innerHTML = `
         border-bottom: 1px solid #e8e8e8;
         padding: 4px;
     }
+    .ant-table-body {
+      overflow: hidden;
+    }
+
     .ant-table-bordered .ant-table-body > table {
       border-left: none;
       border-right: none;
+    }
+    .ant-table-thead {
+      border-bottom: 1px solid #e8e8e8;
+      border-top: 1px solid #e8e8e8;
     }
     .ant-table thead.ant-table-thead > tr > th {
       background: transparent !important;
@@ -46,8 +54,8 @@ class EditableCell extends React.Component {
     editing: false,
   };
   toggleEdit = (record, id, dataIndex, e) => {
-    console.log(e)
-    e.stopPropagation();
+    console.log(record, id, dataIndex, e)
+    e && e.stopPropagation();
     if (record.block) return false;
     const editing = !this.state.editing;
     this.setState({ editing }, () => {
@@ -84,7 +92,6 @@ class EditableCell extends React.Component {
     this.form = form;
     const { children, dataIndex, record, title, typeData } = this.props;
     const { editing } = this.state;
-    console.log(editing)
     return editing ? (
       <Form.Item style={{ margin: 0 }}>
         {form.getFieldDecorator(`${dataIndex}-${record.id}`, {
@@ -144,7 +151,8 @@ class CustomComp extends Component {
       buttonType: null,
       typeData: [],
       crusher: [],
-      currentCrusher: ''
+      currentCrusher: '',
+      submiting: false
     };
     this.element = React.createRef()
   }
@@ -167,18 +175,19 @@ class CustomComp extends Component {
   }
   columns = [
     {
-      title: '名称',
-      width: '20%',
-      key: 'limeName',
+      title: '堆场',
+      key: 'MineStockName',
       align: 'center',
-      dataIndex: 'limeName',
+      dataIndex: 'MineStockName',
       render: (text, row,) => {
         const obj = {
           children: text,
           props: {},
         }
         const { data } = this.state;
-        const lime = data.filter(item => item.groupType === row.groupType);
+        const lime = data.filter(item => item.MineStockName === row.MineStockName);
+        console.log(lime, row)
+
         if (row.id === lime[0].id) {
           obj.props.rowSpan = lime.length
         } else {
@@ -188,96 +197,25 @@ class CustomComp extends Component {
       },
     },
     {
-      title: '堆',
-      width: '16%',
-      key: 'name',
+      title: '产品',
+      key: 'produce',
       align: 'center',
-      dataIndex: 'name',
+      dataIndex: 'produce',
     },
     {
-      title: '入库',
-      width: '16%',
-      key: 'value',
+      title: '产量',
+      key: 'CL',
       align: 'center',
-      dataIndex: 'value',
+      dataIndex: 'CL',
       onCell: record => ({
         record,
         editable: true,
-        dataIndex: 'value',
+        dataIndex: 'CL',
         title: '产量',
         handleSave: this.handleSave,
       })
-    },
-    {
-      title: '单位',
-      width: '16%',
-      key: 'unit',
-      align: 'center',
-      dataIndex: 'unit',
-    },
-    {
-      title: '合计',
-      width: '16%',
-      key: 'amount',
-      align: 'center',
-      dataIndex: 'amount',
-      render: (text, row,) => {
-        const obj = {
-          props: {},
-        }
-        const { data } = this.state;
-        const lime = data.filter(item => item.groupType === row.groupType);
-        obj.children = (Number(lime[0].value) + Number(lime[1].value)).toFixed(2);
-        if (row.id === lime[0].id) {
-          obj.props.rowSpan = lime.length
-        } else {
-          obj.props.rowSpan = 0
-        }
-        return obj
-      },
-    },
+    }
   ];
-  handleColumns = (columns) => {
-    return columns.map(el => {
-      let item = el;
-      if (item.children) {
-        item.children = this.handleColumns(item.children);
-      }
-      if (!item.children) {
-        item = {
-          ...item,
-          width: 120,
-          title: this.keyMap[item.key],
-          dataIndex: item.key,
-          editable: !!this.filterMap[item.key] && item.block !== true,
-          render: (text, row, index) => {
-            const obj = {
-              children: <p style={{ textAlign: 'center', fontSize: '14px', minHeight: '20px', padding: 0, margin: 0 }}>{text}</p>,
-              props: {},
-            }
-            if (item.key === 'mill') {
-              const { data } = this.state;
-              const indexBymill = data.filter(item => item.mill === text);
-              if (row.id === indexBymill[0].id) {
-                obj.props.rowSpan = indexBymill.length
-              } else {
-                obj.props.rowSpan = 0
-              }
-            }
-            return obj
-          },
-          onCell: record => ({
-            record,
-            editable: item.editable,
-            dataIndex: item.dataIndex,
-            title: item.title,
-            handleSave: this.handleSave,
-          })
-        }
-      }
-      return item;
-    })
-  }
   handleSave = row => {
     let newData = [...this.state.data];
     const index = newData.findIndex(item => row.id === item.id);
@@ -286,7 +224,7 @@ class CustomComp extends Component {
       ...item,
       ...row,
     });
-    this.setState({ data: newData });
+    this.setState({ data: this.rowMount(newData.slice(0, -1)) });
   };
   componentWillMount() {
     this.setState({
@@ -317,7 +255,6 @@ class CustomComp extends Component {
       cb: (res) => {
         this.setState({
           crusher: res.result.list,
-          currentCrusher: res.result.list[0].optionValue,
         })
       }
     });
@@ -339,20 +276,35 @@ class CustomComp extends Component {
           team: this.teamOption[0].key
         })
       }
+      if (key === 'currentCrusher') {
+        this.fetchData();
+        this.getRunTime();
+      }
     })
   }
 
-  obj2ArrByMill = (data) => {
-    return data.reduce((arr, item, index) =>
-      arr.concat(
-        [{ ...item[0], groupType: index, type: '石灰石' },
-        { ...item[1], groupType: index, type: '石灰石' }]),
-      [])
-      .map((item, index) => ({
-        ...item,
-        id: index + 1,
-        unit: '吨'
-      }));
+
+  rowMount = (data) => {
+    if (!data.length) return [];
+    const mount = data.reduce((mount, item) => { mount += Number(item.CL); return mount }, 0)
+    return data.concat({ MineStockName: '合计', block: true, CL: mount })
+  }
+  getRunTime = () => {
+    let { proDate, team, currentCrusher } = this.state;
+
+    scriptUtil.excuteScriptService({
+      objName: "SCGL",
+      serviceName: "GetCrusherRunningTime",
+      params: {
+        day: proDate,
+        crush: currentCrusher,
+        shift: team,
+        type: '石灰石'
+      },
+      cb: (res) => {
+        console.log(res);
+      }
+    })
   }
 
   fetchData = () => {
@@ -364,29 +316,36 @@ class CustomComp extends Component {
     }
     scriptUtil.excuteScriptService({
       objName: "SCGL",
-      serviceName: "GetDiggData",
+      serviceName: "GetDiggReport",
       params: {
         day: proDate,
         crush: currentCrusher,
         shift: team,
-        type: "石灰石"
       },
       cb: (res) => {
-        this.setState({
-          data: res.result.result.map((item, index) => ({
-            limeName: item.name,
-            name: item.stack,
-            value: item.output,
-            unit: '吨',
-            objName: item.lime,
-            type: item.type,
-            groupType: item.lime.slice(-1),
-            id: index + 1,
-            proDate: item.proDate,
-            team: item.team,
-          })),
-          buttonType: Boolean(res.result.stats)
-        })
+        if (res.result.list.length === 0) {
+          scriptUtil.excuteScriptService({
+            objName: "SCGL",
+            serviceName: "GetDiggData",
+            params: {
+              day: proDate,
+              crush: currentCrusher,
+              shift: team,
+              type: "石灰石"
+            },
+            cb: (res) => {
+              this.submitType = 'insert'
+              this.setState({
+                data: this.rowMount(res.result.list)
+              })
+            }
+          });
+        } else {
+          this.submitType = 'update'
+          this.setState({
+            data: this.rowMount(res.result.list.map((item, index) => ({ ...item, id: index + 1 })))
+          })
+        }
       }
     });
   }
@@ -397,20 +356,26 @@ class CustomComp extends Component {
       message.warn('请填入类型');
       return false;
     }
+    this.setState({
+      submiting: true
+    })
     scriptUtil.excuteScriptService({
-      objName: "MineProduceResult",
-      serviceName: "AddDataTableEntries",
+      objName: 'crusherreport',
+      serviceName: 'AddDataTableEntries',
       params: {
         params: JSON.stringify({
           list: data.map(item => ({
-            name: item.limeName,
+            produce: item.produce,
+            yard: item.MineStockName,
+            CL: item.CL,
             stack: item.name,
             lime: item.objName,
             type: item.type,
             proDate: this.state.proDate,
             team: this.state.team,
-            output: item.value,
-            user: this.state.staffCode,
+            creator: this.state.staffCode,
+            crusherid: this.state.currentCrusher,
+            duration: 20,
             createTime: moment().format('YYYY-MM-DD HH:mm:ss')
           }))
         })
@@ -418,7 +383,7 @@ class CustomComp extends Component {
       cb: (res) => {
         message.success('保存成功');
         this.setState({
-          buttonType: true
+          submiting: false
         })
         return res.result;
       }
@@ -427,6 +392,9 @@ class CustomComp extends Component {
   }
   handleEditSubmit = () => {
     const { data } = this.state;
+    this.setState({
+      submiting: true
+    })
     const promiseData = data.map(item => new Promise((resolve) => {
       const jsonData = {
         update: {
@@ -442,7 +410,7 @@ class CustomComp extends Component {
       };
       scriptUtil.excuteScriptService({
         objName: "MineProduceResult",
-        serviceName: "UpdateDataTableEntry",
+        serviceName: "crusherreport",
         params: {
           updateData: JSON.stringify(jsonData)
         },
@@ -453,6 +421,9 @@ class CustomComp extends Component {
       });
     }))
     Promise.all(promiseData).then(res => {
+      this.setState({
+        submiting: false
+      })
       message.success('修改成功')
     })
   }
@@ -503,7 +474,7 @@ class CustomComp extends Component {
               <Select
                 style={selectStyle}
                 value={currentCrusher}
-                onChange={(value) => this.onSerchKeyChange('team', value)}
+                onChange={(value) => this.onSerchKeyChange('currentCrusher', value)}
               >
                 {this.state.crusher.map(item => <Select.Option value={item.optionValue}>{item.optionText}</Select.Option>)}
               </Select>
@@ -512,27 +483,9 @@ class CustomComp extends Component {
               <label style={headerLabel}>运行时长：</label>
             </Col>
             <Col span={7} style={Object.assign({}, borderTopRight, rightBorderNone)}>
-              <div>wefwef</div>
+              <div>----</div>
             </Col>
           </Row>
-          {/* <Row>
-            <Col span={6} offset={12}>
-              <div style={serchHeaderItem}>
-                <Button type="primary" onClick={this.fetchData} style={{ background: '#f05c42', border: 'none' }}>获取</Button>
-              </div>
-            </Col>
-            <Col span={6}>
-              <div style={serchHeaderItem}>
-                <Button
-                  type="primary"
-                  onClick={buttonType ? this.handleEditSubmit : this.handleSaveSubmit}
-                  style={{ background: '#15a1a3', border: 'none' }}
-                >
-                  保存
-                </Button>
-              </div>
-            </Col>
-          </Row> */}
         </div>
         <Table
           style={{ wordBreak: 'break-all' }}
@@ -542,8 +495,16 @@ class CustomComp extends Component {
           pagination={false}
           bordered
         />
+        <div style={remarkWrapper}>
+          <label>备注</label>
+          <input style={remarkInput} onChange={}/>
+        </div>
         <div
           style={submitButton}
+          onClick={() => {
+            if (this.state.submiting) return false;
+            this.submitType === 'insert' ? this.handleSaveSubmit() : this.handleEditSubmit()
+          }}
         >保存</div>
       </div >
     );
@@ -559,6 +520,18 @@ const containerWrapper = {
   top: 0,
   bottom: 0,
   margin: 'auto'
+}
+const remarkWrapper = {
+  lineHeight: '44px',
+  paddingLeft: '20px',
+  borderBottom: '1px solid #e8e8e8'
+}
+const remarkInput ={
+  border: 'none',
+  marginLeft: '20px',
+  /* display: table-cell; */
+  width: '300px',
+  height: '36px'
 }
 const headerLabel = {
   whiteSpace: 'nowrap'
