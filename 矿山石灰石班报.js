@@ -152,7 +152,9 @@ class CustomComp extends Component {
       typeData: [],
       crusher: [],
       currentCrusher: '',
-      submiting: false
+      submiting: false,
+      runTime: '',
+      remark: ''
     };
     this.element = React.createRef()
   }
@@ -248,16 +250,23 @@ class CustomComp extends Component {
         }
       });
     });
-    scriptUtil.excuteScriptService({
-      objName: "SCGL",
-      serviceName: "getlsCrusher",
-      params: {},
-      cb: (res) => {
-        this.setState({
-          crusher: res.result.list,
-        })
-      }
-    });
+    new Promise((resolve) => {
+      scriptUtil.excuteScriptService({
+        objName: "SCGL",
+        serviceName: "getlsCrusher",
+        params: {},
+        cb: (res) => {
+          this.setState({
+            crusher: res.result.list,
+            currentCrusher: res.result.list[0].optionValue
+          })
+          resolve()
+        }
+      });
+    }).then(() => {
+      this.getRunTime();
+      this.fetchData();
+    })
     if (this.element && this.element.current) {
       ["touchstart", "touchmove", "touchend"].forEach((event) => {
         this.element.current.addEventListener(event, (e) => {
@@ -298,11 +307,12 @@ class CustomComp extends Component {
       params: {
         day: proDate,
         crush: currentCrusher,
-        shift: team,
-        type: '石灰石'
+        shift: team
       },
       cb: (res) => {
-        console.log(res);
+        this.setState({
+          runTime: res.result
+        })
       }
     })
   }
@@ -343,7 +353,7 @@ class CustomComp extends Component {
         } else {
           this.submitType = 'update'
           this.setState({
-            data: this.rowMount(res.result.list.map((item, index) => ({ ...item, id: index + 1 })))
+            data: this.rowMount(res.result.list)
           })
         }
       }
@@ -351,11 +361,6 @@ class CustomComp extends Component {
   }
   handleSaveSubmit = () => {
     let { data } = this.state;
-    data = data.map(item => ({ ...item, createDate: moment().format('YYYY-MM-DD HH:mm:ss') }));
-    if (data.some(item => !item.type)) {
-      message.warn('请填入类型');
-      return false;
-    }
     this.setState({
       submiting: true
     })
@@ -364,19 +369,20 @@ class CustomComp extends Component {
       serviceName: 'AddDataTableEntries',
       params: {
         params: JSON.stringify({
-          list: data.map(item => ({
+          list: data.slice(0, -1).map(item => ({
             produce: item.produce,
             yard: item.MineStockName,
-            CL: item.CL,
+            CL: Number(item.CL),
             stack: item.name,
             lime: item.objName,
             type: item.type,
-            proDate: this.state.proDate,
+            prodate: this.state.proDate,
             team: this.state.team,
-            creator: this.state.staffCode,
+            creator: this.state.staffName,
             crusherid: this.state.currentCrusher,
-            duration: 20,
-            createTime: moment().format('YYYY-MM-DD HH:mm:ss')
+            duration: Number(this.state.runTime),
+            creattime: moment().format('YYYY-MM-DD HH:mm:ss'),
+            remark: this.state.remark
           }))
         })
       },
@@ -395,28 +401,45 @@ class CustomComp extends Component {
     this.setState({
       submiting: true
     })
-    const promiseData = data.map(item => new Promise((resolve) => {
+    const promiseData = data.slice(0, -1).map(item => new Promise((resolve) => {
       const jsonData = {
         update: {
-          output: item.value,
+          CL: Number(item.CL),
         },
         where: {
-          name: item.limeName,
-          stack: item.name,
-          lime: item.objName,
-          type: item.type,
-          proDate: this.state.proDate,
+          id: item.id
         }
       };
       scriptUtil.excuteScriptService({
-        objName: "MineProduceResult",
-        serviceName: "crusherreport",
+        objName: "crusherreport",
+        serviceName: "UpdateDataTableEntry",
         params: {
           updateData: JSON.stringify(jsonData)
         },
         cb: (res) => {
           resolve(res.result)
           return res.result;
+        }
+      });
+    })).concat(new Promise(resolve => {
+      scriptUtil.excuteScriptService({
+        objName: "crusherreport",
+        serviceName: "UpdateDataTableEntry",
+        params: {
+          updateData: JSON.stringify({
+            update: {
+              remark: this.state.remark,
+              duration: Number(this.state.runTime),
+            },
+            where: {
+              crusherid: this.state.currentCrusher,
+              prodate: this.state.proDate,
+              team: this.state.team,
+            }
+          })
+        },
+        cb: (res) => {
+          resolve(res.result)
         }
       });
     }))
@@ -427,9 +450,14 @@ class CustomComp extends Component {
       message.success('修改成功')
     })
   }
+  remarkChange = (e) => {
+    this.setState({
+      remark: e.target.value
+    })
+  }
   disabledDate = (current) => current && current > moment().endOf('day');
   render() {
-    const { proDate, team, buttonType, data, currentCrusher } = this.state;
+    const { proDate, team, buttonType, data, currentCrusher, runTime } = this.state;
     const components = {
       body: {
         row: EditableFormRow,
@@ -483,7 +511,7 @@ class CustomComp extends Component {
               <label style={headerLabel}>运行时长：</label>
             </Col>
             <Col span={7} style={Object.assign({}, borderTopRight, rightBorderNone)}>
-              <div>----</div>
+              <Input value={runTime} onChange={(e) => this.setState({ runTime: e.target.value })} />
             </Col>
           </Row>
         </div>
@@ -497,7 +525,7 @@ class CustomComp extends Component {
         />
         <div style={remarkWrapper}>
           <label>备注</label>
-          <input style={remarkInput} onChange={}/>
+          <input style={remarkInput} onInput={this.remarkChange} />
         </div>
         <div
           style={submitButton}
@@ -526,11 +554,11 @@ const remarkWrapper = {
   paddingLeft: '20px',
   borderBottom: '1px solid #e8e8e8'
 }
-const remarkInput ={
+const remarkInput = {
   border: 'none',
   marginLeft: '20px',
   /* display: table-cell; */
-  width: '300px',
+  width: '200px',
   height: '36px'
 }
 const headerLabel = {
