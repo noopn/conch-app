@@ -264,7 +264,6 @@ class CustomComp extends Component {
         }
       });
     }).then(() => {
-      this.getRunTime();
       this.fetchData();
     })
     if (this.element && this.element.current) {
@@ -285,10 +284,7 @@ class CustomComp extends Component {
           team: this.teamOption[0].key
         })
       }
-      if (key === 'currentCrusher') {
-        this.fetchData();
-        this.getRunTime();
-      }
+      this.fetchData();
     })
   }
 
@@ -334,6 +330,7 @@ class CustomComp extends Component {
       },
       cb: (res) => {
         if (res.result.list.length === 0) {
+          this.getRunTime();
           scriptUtil.excuteScriptService({
             objName: "SCGL",
             serviceName: "GetDiggData",
@@ -346,14 +343,17 @@ class CustomComp extends Component {
             cb: (res) => {
               this.submitType = 'insert'
               this.setState({
-                data: this.rowMount(res.result.list)
+                data: this.rowMount(res.result.list),
+                remark:''
               })
             }
           });
         } else {
           this.submitType = 'update'
           this.setState({
-            data: this.rowMount(res.result.list)
+            data: this.rowMount(res.result.list),
+            remark: res.result.list[0].remark,
+            runTime: res.result.list[0].duration
           })
         }
       }
@@ -457,7 +457,7 @@ class CustomComp extends Component {
   }
   disabledDate = (current) => current && current > moment().endOf('day');
   render() {
-    const { proDate, team, buttonType, data, currentCrusher, runTime } = this.state;
+    const { proDate, team, data, currentCrusher, runTime, remark } = this.state;
     const components = {
       body: {
         row: EditableFormRow,
@@ -525,7 +525,7 @@ class CustomComp extends Component {
         />
         <div style={remarkWrapper}>
           <label>备注</label>
-          <input style={remarkInput} onInput={this.remarkChange} />
+          <input style={remarkInput} value={remark} onInput={this.remarkChange} />
         </div>
         <div
           style={submitButton}
@@ -550,16 +550,21 @@ const containerWrapper = {
   margin: 'auto'
 }
 const remarkWrapper = {
+  display: 'flex',
+  alignItems: 'center',
   lineHeight: '44px',
   paddingLeft: '20px',
   borderBottom: '1px solid #e8e8e8'
 }
 const remarkInput = {
+  flex: 1,
   border: 'none',
   marginLeft: '20px',
   /* display: table-cell; */
   width: '200px',
-  height: '36px'
+  height: '36px',
+  paddingLeft:'20px',
+  border: '1px solid #e8e8e8'
 }
 const headerLabel = {
   whiteSpace: 'nowrap'
