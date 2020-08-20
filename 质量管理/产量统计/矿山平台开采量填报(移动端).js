@@ -221,7 +221,10 @@ class CustomComp extends Component {
         });
         this.setState({ data: newData });
     };
+
+
     componentDidMount() {
+        document.getElementById('runtimePage') && (document.getElementById('runtimePage').children[0].style.display = 'none')
         this.fetchDigg()
             .then(() => {
                 this.fetchData();
@@ -237,19 +240,22 @@ class CustomComp extends Component {
     }
 
     getUsersSessionInfo = () => {
-        const loginMsg = JSON.parse(localStorage.getItem('loginMsg'));
-        scriptUtil.excuteScriptService({
-            objName: "ZLGL",
-            serviceName: "getUsersSessionInfo",
-            params: {
-                username: loginMsg.username
-            },
-            cb: (res) => {
-                this.setState({
-                    userInfo: res.result.userInfo
-                })
-            }
-        })
+        scriptUtil.getUserInfo(user => {
+            scriptUtil.excuteScriptService({
+                objName: "ZLGL",
+                serviceName: "getUsersSessionInfo",
+                params: { "username": user.userInfo.username },
+                cb: (res) => {
+                    const temp = {
+                        staffName: res.result.userInfo.staffName, // 分析人
+                        staffCode: res.result.userInfo.staffCode, // 分析人id
+                        scDate: moment().clone().add(-2, 'days').format('YYYY-MM-DD'), // 生产日期
+                        fxDate: moment().format('YYYY-MM-DD'), // 分析date
+                    }
+                    this.setState({ ...temp });
+                }
+            });
+        });
     }
 
     onSerchKeyChange = (key, value) => {
@@ -471,3 +477,4 @@ const submitButton = {
     lineHeight: '40px',
     textAlign: 'center'
 }
+

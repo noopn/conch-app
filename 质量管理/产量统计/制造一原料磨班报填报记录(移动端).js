@@ -304,7 +304,7 @@ class CustomComp extends Component {
 
         scriptUtil.excuteScriptService({
             objName: "SCGL",
-            serviceName: "GetCrusherRunningTime",
+            serviceName: "GetDeviceRunningTime",
             params: {
                 prodate: proDate,
                 DeviceId: currentCrusher,

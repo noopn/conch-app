@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
 import { Button, DatePicker, Select, Table, Input, Row, Col, Form, message } from 'antd';
+const { MonthPicker } = DatePicker;
 import moment from 'moment';
 var css = document.createElement('style');
 css.type = 'text/css';
@@ -74,6 +75,7 @@ class EditableCell extends React.Component {
     };
 
     save = (id) => {
+        console.log(id);
         const { record, handleSave } = this.props;
         this.form.validateFields((error, values) => {
             if (error && error[e.currentTarget.id]) {
@@ -131,40 +133,43 @@ class EditableCell extends React.Component {
         );
     }
 }
-const dateFormat = 'YYYY-MM-DD';
+const dateFormat = 'YYYY-MM';
 class CustomComp extends Component {
     element = React.createRef()
     state = {
         data: [],
-        proDate: moment().format(dateFormat),
-        digg: '',
+        month: moment().format(dateFormat),
+        type: '',
         userInfo: {},
-        diggs: []
+        types: []
     }
     keyMap = {
-        "Diggings": "矿区",
-        // "Platform": "平台",
-        "Item": "项目",
-        "Consumption": "原料消耗量",
-
+        "type": "类别",
+        "item": "项目",
+        "Monthplan": "月计划",
+        //"month": "月份",
+        "Monthstore": "月初库存",
     }
     filterMap = {
-        // "Platform": "平台",
-        // "Item": "项目",
-        "Consumption": "原料消耗量",
+        "Monthplan": "月计划",
+        "Monthstore": "月初库存",
+        "month": "月份",
     }
     columns = [
         {
-            key: 'Diggings',
+            key: 'type',
+        },
+        {
+            key: 'item',
+        },
+        {
+            key: 'Monthplan',
         },
         // {
-        //     key: 'Platform',
+        //     key: 'month',
         // },
         {
-            key: 'Item',
-        },
-        {
-            key: 'Consumption',
+            key: 'Monthstore',
         }
     ];
     handleColumns = (columns) => {
@@ -181,15 +186,16 @@ class CustomComp extends Component {
                     dataIndex: item.key,
                     editable: !!this.filterMap[item.key] && item.block !== true,
                     render: (text, row, index) => {
+                        console.log(text, row, index)
                         const obj = {
-                            children: <p style={{ textAlign: 'center', fontSize: '14px', height: '44px', lineHeight: '44px', padding: 0, margin: 0 }}>{text}</p>,
+                            children: <p style={{ textAlign: 'center', fontSize: '18px', height: '46px', lineHeight: '46px', padding: 0, margin: 0 }}>{text}</p>,
                             props: {},
                         }
-                        if (item.key === 'Diggings') {
+                        if (item.key === 'type') {
                             const { data } = this.state;
-                            const indexByDiggings = data.filter(item => item.Diggings === text);
-                            if (row.id === indexByDiggings[0].id) {
-                                obj.props.rowSpan = indexByDiggings.length
+                            const indexBytype = data.filter(item => item.type === text);
+                            if (row.id === indexBytype[0].id) {
+                                obj.props.rowSpan = indexBytype.length
                             } else {
                                 obj.props.rowSpan = 0
                             }
@@ -219,8 +225,7 @@ class CustomComp extends Component {
         this.setState({ data: newData });
     };
     componentDidMount() {
-        document.getElementById('runtimePage') && (document.getElementById('runtimePage').children[0].style.display = 'none')
-        this.fetchDigg()
+        this.fetchtype()
             .then(() => {
                 this.fetchData();
             });
@@ -235,22 +240,20 @@ class CustomComp extends Component {
     }
 
     getUsersSessionInfo = () => {
-        scriptUtil.getUserInfo(user => {
-            scriptUtil.excuteScriptService({
-              objName: "ZLGL",
-              serviceName: "getUsersSessionInfo",
-              params: { "username": user.userInfo.username },
-              cb: (res) => {
-                const temp = {
-                  staffName: res.result.userInfo.staffName, // 分析人
-                  staffCode: res.result.userInfo.staffCode, // 分析人id
-                  scDate: moment().clone().add(-2, 'days').format('YYYY-MM-DD'), // 生产日期
-                  fxDate: moment().format('YYYY-MM-DD'), // 分析date
-                }
-                this.setState({ ...temp });
-              }
-            });
-          });
+        const loginMsg = JSON.parse(localStorage.getItem('loginMsg'));
+        scriptUtil.excuteScriptService({
+            objName: "ZLGL",
+            serviceName: "getUsersSessionInfo",
+            params: {
+                username: loginMsg.username
+            },
+            cb: (res) => {
+                // console.log(res);
+                this.setState({
+                    userInfo: res.result.userInfo
+                })
+            }
+        })
     }
 
     onSerchKeyChange = (key, value) => {
@@ -260,16 +263,16 @@ class CustomComp extends Component {
             this.fetchData();
         })
     }
-    fetchDigg = () => {
+    fetchtype = () => {
         return new Promise(resolve => {
             scriptUtil.excuteScriptService({
                 objName: "SCGL",
-                serviceName: "Getdiggings",
+                serviceName: "Gettypelist",
                 params: {},
                 cb: (res) => {
                     this.setState({
-                        diggs: res.result.list,
-                        digg: res.result.list[0].optionText
+                        types: res.result.list,
+                        type: res.result.list[0].optionText
                     }, () => {
                         resolve(res);
                     })
@@ -278,16 +281,16 @@ class CustomComp extends Component {
         })
     }
     fetchData = () => {
-        let { proDate, digg } = this.state;
+        let { month, type } = this.state;
 
         scriptUtil.excuteScriptService({
             objName: "SCGL",
-            serviceName: "GetPlatformByDate1",
+            serviceName: "GetTypeYardByDate",
             params: {
-                day: proDate, digg
+                month: month, type
             },
             cb: (res) => {
-                this.staticProDate = res.result.length ? res.result[0].ProDate : '';
+                this.staticmonth = res.result.length ? res.result[0].month : '';
                 this.setState({
                     data: res.result,
                 })
@@ -296,24 +299,20 @@ class CustomComp extends Component {
     }
 
     handleEditSubmit = () => {
-        const { data, userInfo, digg } = this.state;
+        const { data, userInfo, type } = this.state;
         if (!data.length) return false;
         const promiseData = data.map(item => new Promise((resolve) => {
             const jsonData = {
                 'update': {
-                    Platform: item.Platform,
-                    Consumption: item.Consumption,
-                    // ZCL: item.ZCL,
-                    // XLL: item.XLL,
-                    CreateTime: moment().format("YYYY-MM-DD HH:mm:ss"),
-                    Creator: userInfo.staffName,
+                    Monthplan: item.Monthplan,
+                    Monthstore: item.Monthstore,
                 },
                 'where': {
                     id: item.id,
                 }
             };
             scriptUtil.excuteScriptService({
-                objName: "PlatformConsumptionReport",
+                objName: "YardMonthReport",
                 serviceName: "UpdateDataTableEntry",
                 params: {
                     updateData: JSON.stringify(jsonData)
@@ -330,19 +329,17 @@ class CustomComp extends Component {
     outputExcel = () => {
         let { data } = this.state;
         data = data.map(item => ({
-            Diggings: item.Diggings,
-            // Platform: item.Platform,
-            Consumption: item.Consumption,
-            // ZCL: item.ZCL,
-            // XLL: item.XLL
+            type: item.type,
+            Monthplan: item.Monthplan,
+            Monthstore: item.Monthstore,
         }))
         const fileName = '生产报告';
-        const dataTitle = ['矿区', '项目', '原料消耗量'];
+        const dataTitle = ['类型', '项目', '月计划', '月初库存'];
 
         scriptUtil.JSONToExcelConvertor({ data, fileName, dataTitle })
     }
     render() {
-        const { proDate, digg, data, diggs } = this.state;
+        const { month, type, data, types } = this.state;
         const components = {
             body: {
                 row: EditableFormRow,
@@ -355,28 +352,29 @@ class CustomComp extends Component {
                 <div style={serchHeader}>
                     <Row>
                         <Col span={5} style={borderTopRight}>
-                            <label style={headerLabel}>日期：</label>
+                            <label style={headerLabel}>月份：</label>
                         </Col>
                         <Col span={7} style={borderTopRight}>
-                            <DatePicker
-                                onChange={(D, dateString) => this.onSerchKeyChange('proDate', dateString)}
-                                defaultValue={moment(proDate)}
+                            <MonthPicker
+                                onChange={(D, dateString) => this.onSerchKeyChange('month', dateString)}
+                                defaultValue={moment(month)}
                                 suffixIcon={() => null}
                             >
-                            </DatePicker>
+                            </MonthPicker >
+
                         </Col>
                         <Col span={5} style={borderTopRight}>
-                            <label style={headerLabel}>矿区：</label>
+                            <label style={headerLabel}>类型：</label>
                         </Col>
                         <Col span={7} style={Object.assign({}, borderTopRight, rightBorderNone)}>
                             <div ref={this.select}>
                                 <Select
                                     style={selectStyle}
-                                    value={digg}
-                                    onChange={(value, e) => this.onSerchKeyChange('digg', value)}
+                                    value={type}
+                                    onChange={(value, e) => this.onSerchKeyChange('type', value)}
                                 >
                                     {
-                                        diggs.map(item => (
+                                        types.map(item => (
                                             <Select.Option value={item.optionText}>{item.optionText}</Select.Option>
                                         ))
                                     }

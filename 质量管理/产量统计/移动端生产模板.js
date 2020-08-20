@@ -1,46 +1,7 @@
 import React, { Component } from 'react';
 import { Button, DatePicker, Select, Table, Input, Row, Col, Form, message } from 'antd';
 import moment from 'moment';
-var css = document.createElement('style');
-css.type = 'text/css';
-css.id = 'CustomCompStyle';
-css.innerHTML = `
-.ant-table .ant-table-tbody > tr > td { 
-    white-space: nowrap;
-    border-bottom: 1px solid #e8e8e8;
-    padding: 4px;
-}
-.ant-table-body {
-  overflow: hidden;
-}
 
-.ant-table-bordered .ant-table-body > table {
-  border-left: none;
-  border-right: none;
-}
-.ant-table-thead {
-  border-bottom: 1px solid #e8e8e8;
-  border-top: 1px solid #e8e8e8;
-}
-.ant-table thead.ant-table-thead > tr > th {
-  background: transparent !important;
-  color: #444 !important;
-  font-weight: bold !important;
-}
-.ant-table thead.ant-table-thead > tr > th:last-child {
-  border: none
-}
-.ant-table-thead > tr > th {
-    text-align: center;
-}
-.ant-calendar-picker input {
-  border:none;
-  text-align:center
-}
-.ant-select-selection {
-  border:none
-}`;
-document.getElementsByTagName('head')[0].appendChild(css);
 const EditableContext = React.createContext();
 
 const EditableRow = ({ form, index, ...props }) => (
@@ -52,7 +13,6 @@ const EditableRow = ({ form, index, ...props }) => (
 const EditableFormRow = Form.create()(EditableRow);
 
 class EditableCell extends React.Component {
-
     state = {
         editing: false,
     };
@@ -143,28 +103,32 @@ class CustomComp extends Component {
     }
     keyMap = {
         "Diggings": "矿区",
-        // "Platform": "平台",
-        "Item": "项目",
-        "Consumption": "原料消耗量",
-
+        "Platform": "平台",
+        "BPL": "日常爆破量",
+        "ZCL": "转场量",
+        "XLL": "下料量",
     }
     filterMap = {
         // "Platform": "平台",
-        // "Item": "项目",
-        "Consumption": "原料消耗量",
+        "BPL": "日常爆破量",
+        "ZCL": "转场量",
+        "XLL": "下料量",
     }
     columns = [
         {
             key: 'Diggings',
         },
-        // {
-        //     key: 'Platform',
-        // },
         {
-            key: 'Item',
+            key: 'Platform',
         },
         {
-            key: 'Consumption',
+            key: 'BPL',
+        },
+        {
+            key: 'ZCL',
+        },
+        {
+            key: 'XLL',
         }
     ];
     handleColumns = (columns) => {
@@ -218,8 +182,10 @@ class CustomComp extends Component {
         });
         this.setState({ data: newData });
     };
+
+
     componentDidMount() {
-        document.getElementById('runtimePage') && (document.getElementById('runtimePage').children[0].style.display = 'none')
+        document.getElementById('runtimePage').children[0].style.display = 'none'
         this.fetchDigg()
             .then(() => {
                 this.fetchData();
@@ -237,20 +203,20 @@ class CustomComp extends Component {
     getUsersSessionInfo = () => {
         scriptUtil.getUserInfo(user => {
             scriptUtil.excuteScriptService({
-              objName: "ZLGL",
-              serviceName: "getUsersSessionInfo",
-              params: { "username": user.userInfo.username },
-              cb: (res) => {
-                const temp = {
-                  staffName: res.result.userInfo.staffName, // 分析人
-                  staffCode: res.result.userInfo.staffCode, // 分析人id
-                  scDate: moment().clone().add(-2, 'days').format('YYYY-MM-DD'), // 生产日期
-                  fxDate: moment().format('YYYY-MM-DD'), // 分析date
+                objName: "ZLGL",
+                serviceName: "getUsersSessionInfo",
+                params: { "username": user.userInfo.username },
+                cb: (res) => {
+                    const temp = {
+                        staffName: res.result.userInfo.staffName, // 分析人
+                        staffCode: res.result.userInfo.staffCode, // 分析人id
+                        scDate: moment().clone().add(-2, 'days').format('YYYY-MM-DD'), // 生产日期
+                        fxDate: moment().format('YYYY-MM-DD'), // 分析date
+                    }
+                    this.setState({ ...temp });
                 }
-                this.setState({ ...temp });
-              }
             });
-          });
+        });
     }
 
     onSerchKeyChange = (key, value) => {
@@ -282,7 +248,7 @@ class CustomComp extends Component {
 
         scriptUtil.excuteScriptService({
             objName: "SCGL",
-            serviceName: "GetPlatformByDate1",
+            serviceName: "GetPlatformByDate",
             params: {
                 day: proDate, digg
             },
@@ -298,13 +264,53 @@ class CustomComp extends Component {
     handleEditSubmit = () => {
         const { data, userInfo, digg } = this.state;
         if (!data.length) return false;
+        if (digg !== '官山') {
+            scriptUtil.excuteScriptService({
+                objName: "PlatformExploitationReport",
+                serviceName: "UpdateDataTableEntry",
+                params: {
+                    updateData: JSON.stringify({
+                        'update': {
+                            XLL: Math.round((data.reduce((val, item) => { val += Number(item.XLL); return val }, 0) * 0.06)) + '',
+                            CreateTime: moment().format("YYYY-MM-DD HH:mm:ss"),
+                            Creator: userInfo.staffName,
+                        },
+                        'where': {
+                            Diggings: digg,
+                            ProDate: this.staticProDate,
+                            Platform: '夹石',
+                        }
+                    })
+                },
+                cb() { }
+            });
+            scriptUtil.excuteScriptService({
+                objName: "PlatformExploitationReport",
+                serviceName: "UpdateDataTableEntry",
+                params: {
+                    updateData: JSON.stringify({
+                        'update': {
+                            XLL: Math.round((data.reduce((val, item) => { val += Number(item.XLL); return val }, 0) * 0.07)) + '',
+                            CreateTime: moment().format("YYYY-MM-DD HH:mm:ss"),
+                            Creator: userInfo.staffName,
+                        },
+                        'where': {
+                            Diggings: digg,
+                            ProDate: this.staticProDate,
+                            Platform: '剥离物',
+                        }
+                    })
+                },
+                cb() { }
+            });
+        }
         const promiseData = data.map(item => new Promise((resolve) => {
             const jsonData = {
                 'update': {
                     Platform: item.Platform,
-                    Consumption: item.Consumption,
-                    // ZCL: item.ZCL,
-                    // XLL: item.XLL,
+                    BPL: item.BPL,
+                    ZCL: item.ZCL,
+                    XLL: item.XLL,
                     CreateTime: moment().format("YYYY-MM-DD HH:mm:ss"),
                     Creator: userInfo.staffName,
                 },
@@ -313,7 +319,7 @@ class CustomComp extends Component {
                 }
             };
             scriptUtil.excuteScriptService({
-                objName: "PlatformConsumptionReport",
+                objName: "PlatformExploitationReport",
                 serviceName: "UpdateDataTableEntry",
                 params: {
                     updateData: JSON.stringify(jsonData)
@@ -326,20 +332,6 @@ class CustomComp extends Component {
         Promise.all(promiseData).then(res => {
             message.success('保存成功');
         })
-    }
-    outputExcel = () => {
-        let { data } = this.state;
-        data = data.map(item => ({
-            Diggings: item.Diggings,
-            // Platform: item.Platform,
-            Consumption: item.Consumption,
-            // ZCL: item.ZCL,
-            // XLL: item.XLL
-        }))
-        const fileName = '生产报告';
-        const dataTitle = ['矿区', '项目', '原料消耗量'];
-
-        scriptUtil.JSONToExcelConvertor({ data, fileName, dataTitle })
     }
     render() {
         const { proDate, digg, data, diggs } = this.state;
@@ -446,3 +438,44 @@ const submitButton = {
     lineHeight: '40px',
     textAlign: 'center'
 }
+
+var css = document.createElement('style');
+css.type = 'text/css';
+css.id = 'CustomCompStyle';
+css.innerHTML = `
+.ant-table .ant-table-tbody > tr > td { 
+    white-space: nowrap;
+    border-bottom: 1px solid #e8e8e8;
+    padding: 4px;
+}
+.ant-table-body {
+  overflow: hidden;
+}
+
+.ant-table-bordered .ant-table-body > table {
+  border-left: none;
+  border-right: none;
+}
+.ant-table-thead {
+  border-bottom: 1px solid #e8e8e8;
+  border-top: 1px solid #e8e8e8;
+}
+.ant-table thead.ant-table-thead > tr > th {
+  background: transparent !important;
+  color: #444 !important;
+  font-weight: bold !important;
+}
+.ant-table thead.ant-table-thead > tr > th:last-child {
+  border: none
+}
+.ant-table-thead > tr > th {
+    text-align: center;
+}
+.ant-calendar-picker input {
+  border:none;
+  text-align:center
+}
+.ant-select-selection {
+  border:none
+}`;
+document.getElementsByTagName('head')[0].appendChild(css);
