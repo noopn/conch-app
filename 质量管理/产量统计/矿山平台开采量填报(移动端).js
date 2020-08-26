@@ -138,6 +138,7 @@ class CustomComp extends Component {
         proDate: moment().format(dateFormat),
         digg: '',
         userInfo: {},
+        submiting: false,
         diggs: []
     }
     keyMap = {
@@ -301,8 +302,11 @@ class CustomComp extends Component {
     }
 
     handleEditSubmit = () => {
-        const { data, userInfo, digg } = this.state;
+        const { data, digg } = this.state;
         if (!data.length) return false;
+        this.setState({
+            submiting: true
+        })
         if (digg !== '官山') {
             scriptUtil.excuteScriptService({
                 objName: "PlatformExploitationReport",
@@ -311,8 +315,8 @@ class CustomComp extends Component {
                     updateData: JSON.stringify({
                         'update': {
                             XLL: Math.round((data.reduce((val, item) => { val += Number(item.XLL); return val }, 0) * 0.06)) + '',
-                            CreateTime: moment().format("YYYY-MM-DD HH:mm:ss"),
-                            Creator: userInfo.staffName,
+                            Createtime: moment().format("YYYY-MM-DD HH:mm:ss"),
+                            Creator: this.state.staffName,
                         },
                         'where': {
                             Diggings: digg,
@@ -331,7 +335,7 @@ class CustomComp extends Component {
                         'update': {
                             XLL: Math.round((data.reduce((val, item) => { val += Number(item.XLL); return val }, 0) * 0.07)) + '',
                             CreateTime: moment().format("YYYY-MM-DD HH:mm:ss"),
-                            Creator: userInfo.staffName,
+                            Creator: this.state.staffName,
                         },
                         'where': {
                             Diggings: digg,
@@ -351,7 +355,7 @@ class CustomComp extends Component {
                     ZCL: item.ZCL,
                     XLL: item.XLL,
                     CreateTime: moment().format("YYYY-MM-DD HH:mm:ss"),
-                    Creator: userInfo.staffName,
+                    Creator: this.state.staffName,
                 },
                 'where': {
                     id: item.id,
@@ -369,6 +373,9 @@ class CustomComp extends Component {
             });
         }))
         Promise.all(promiseData).then(res => {
+            this.setState({
+                submiting: false
+            })
             message.success('保存成功');
         })
     }
@@ -426,10 +433,15 @@ class CustomComp extends Component {
                         bordered
                     />
                 </div>
-                <div
+                <Button
                     style={submitButton}
-                    onClick={this.handleEditSubmit}
-                >保存</div>
+                    onClick={(e) => {
+                        e.preventDefault();
+                        if (this.state.submiting) return false;
+                        this.handleEditSubmit()
+                    }}
+                >保存
+                </Button>
             </div >
         );
     }

@@ -139,6 +139,7 @@ class CustomComp extends Component {
         proDate: moment().format(dateFormat),
         digg: '',
         userInfo: {},
+        submiting: false,
         diggs: []
     }
     keyMap = {
@@ -237,20 +238,20 @@ class CustomComp extends Component {
     getUsersSessionInfo = () => {
         scriptUtil.getUserInfo(user => {
             scriptUtil.excuteScriptService({
-              objName: "ZLGL",
-              serviceName: "getUsersSessionInfo",
-              params: { "username": user.userInfo.username },
-              cb: (res) => {
-                const temp = {
-                  staffName: res.result.userInfo.staffName, // 分析人
-                  staffCode: res.result.userInfo.staffCode, // 分析人id
-                  scDate: moment().clone().add(-2, 'days').format('YYYY-MM-DD'), // 生产日期
-                  fxDate: moment().format('YYYY-MM-DD'), // 分析date
+                objName: "ZLGL",
+                serviceName: "getUsersSessionInfo",
+                params: { "username": user.userInfo.username },
+                cb: (res) => {
+                    const temp = {
+                        staffName: res.result.userInfo.staffName, // 分析人
+                        staffCode: res.result.userInfo.staffCode, // 分析人id
+                        scDate: moment().clone().add(-2, 'days').format('YYYY-MM-DD'), // 生产日期
+                        fxDate: moment().format('YYYY-MM-DD'), // 分析date
+                    }
+                    this.setState({ ...temp });
                 }
-                this.setState({ ...temp });
-              }
             });
-          });
+        });
     }
 
     onSerchKeyChange = (key, value) => {
@@ -296,17 +297,17 @@ class CustomComp extends Component {
     }
 
     handleEditSubmit = () => {
-        const { data, userInfo, digg } = this.state;
+        const { data } = this.state;
         if (!data.length) return false;
+        this.setState({
+            submiting: true
+        })
         const promiseData = data.map(item => new Promise((resolve) => {
             const jsonData = {
                 'update': {
-                    Platform: item.Platform,
                     Consumption: item.Consumption,
-                    // ZCL: item.ZCL,
-                    // XLL: item.XLL,
-                    CreateTime: moment().format("YYYY-MM-DD HH:mm:ss"),
-                    Creator: userInfo.staffName,
+                    Createtime: moment().format("YYYY-MM-DD HH:mm:ss"),
+                    Creator: this.state.staffName,
                 },
                 'where': {
                     id: item.id,
@@ -324,22 +325,11 @@ class CustomComp extends Component {
             });
         }))
         Promise.all(promiseData).then(res => {
+            this.setState({
+                submiting: false
+            })
             message.success('保存成功');
         })
-    }
-    outputExcel = () => {
-        let { data } = this.state;
-        data = data.map(item => ({
-            Diggings: item.Diggings,
-            // Platform: item.Platform,
-            Consumption: item.Consumption,
-            // ZCL: item.ZCL,
-            // XLL: item.XLL
-        }))
-        const fileName = '生产报告';
-        const dataTitle = ['矿区', '项目', '原料消耗量'];
-
-        scriptUtil.JSONToExcelConvertor({ data, fileName, dataTitle })
     }
     render() {
         const { proDate, digg, data, diggs } = this.state;
@@ -395,10 +385,13 @@ class CustomComp extends Component {
                         bordered
                     />
                 </div>
-                <div
+                <Button
                     style={submitButton}
-                    onClick={this.handleEditSubmit}
-                >保存</div>
+                    onClick={() => {
+                        if (this.state.submiting) return false;
+                        this.handleEditSubmit()
+                    }}
+                >保存</Button>
             </div >
         );
     }

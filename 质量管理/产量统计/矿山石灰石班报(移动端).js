@@ -54,7 +54,6 @@ class EditableCell extends React.Component {
     editing: false,
   };
   toggleEdit = (record, id, dataIndex, e) => {
-    console.log(record, id, dataIndex, e)
     e && e.stopPropagation();
     if (record.block) return false;
     const editing = !this.state.editing;
@@ -62,11 +61,11 @@ class EditableCell extends React.Component {
       if (editing) {
         // ht的mousedown事件会触发react的onblur事件 需要阻止事件冒泡
         if (id) {
-          console.log(id);
           document.querySelector(`#${id}`).addEventListener('mousedown', (e) => {
             e.stopPropagation();
           }, false)
         }
+
         if (dataIndex === 'value') {
           this.input.focus();
         }
@@ -103,6 +102,7 @@ class EditableCell extends React.Component {
           ],
           initialValue: record[dataIndex],
         })(<Input
+          autofocus
           ref={node => (this.input = node)}
           onPressEnter={() => this.save(`${dataIndex}-${record.id}`)}
           onBlur={() => this.save(`${dataIndex}-${record.id}`)}
@@ -159,20 +159,27 @@ class CustomComp extends Component {
     this.element = React.createRef()
   }
 
+  // get teamOption() {
+  //   const arr = [];
+  //   if (moment(`${this.state.proDate} 08:00:00`, 'YYYY-MM-DD HH:mm:ss').valueOf() <= moment().valueOf()) {
+  //     arr.push({ key: '夜班', value: '夜班' })
+  //   }
+  //   if (moment(`${this.state.proDate} 16:00:00`, 'YYYY-MM-DD HH:mm:ss').valueOf() <= moment().valueOf()) {
+  //     arr.push({ key: '白班', value: '白班' })
+  //   }
+  //   if (moment(this.state.proDate, 'YYYY-MM-DD').endOf('day').valueOf() <= moment().valueOf()) {
+  //     arr.push({ key: '中班', value: '中班' })
+  //   }
+  //   if (!arr.length) {
+  //     arr.push({ key: 'null', value: '暂无班组查询' })
+  //   }
+  //   return arr;
+  // }
   get teamOption() {
     const arr = [];
-    if (moment(`${this.state.proDate} 08:00:00`, 'YYYY-MM-DD HH:mm:ss').valueOf() <= moment().valueOf()) {
-      arr.push({ key: '夜班', value: '夜班' })
-    }
-    if (moment(`${this.state.proDate} 16:00:00`, 'YYYY-MM-DD HH:mm:ss').valueOf() <= moment().valueOf()) {
-      arr.push({ key: '白班', value: '白班' })
-    }
-    if (moment(this.state.proDate, 'YYYY-MM-DD').endOf('day').valueOf() <= moment().valueOf()) {
-      arr.push({ key: '中班', value: '中班' })
-    }
-    if (!arr.length) {
-      arr.push({ key: 'null', value: '暂无班组查询' })
-    }
+    arr.push({ key: '夜班', value: '夜班' })
+    arr.push({ key: '白班', value: '白班' })
+    arr.push({ key: '中班', value: '中班' })
     return arr;
   }
   columns = [
@@ -188,8 +195,6 @@ class CustomComp extends Component {
         }
         const { data } = this.state;
         const lime = data.filter(item => item.MineStockName === row.MineStockName);
-        console.log(lime, row)
-
         if (row.id === lime[0].id) {
           obj.props.rowSpan = lime.length
         } else {
@@ -344,7 +349,7 @@ class CustomComp extends Component {
               this.submitType = 'insert'
               this.setState({
                 data: this.rowMount(res.result.list),
-                remark:''
+                remark: ''
               })
             }
           });
@@ -391,6 +396,7 @@ class CustomComp extends Component {
         this.setState({
           submiting: false
         })
+        this.submitType = 'update'
         return res.result;
       }
     });
@@ -473,7 +479,7 @@ class CustomComp extends Component {
             </Col>
             <Col span={7} style={borderTopRight}>
               <DatePicker
-                disabledDate={this.disabledDate}
+                // disabledDate={this.disabledDate}
                 style={datePickerStyle}
                 onChange={(D, dateString) => this.onSerchKeyChange('proDate', dateString)}
                 defaultValue={moment(proDate)}
@@ -527,13 +533,13 @@ class CustomComp extends Component {
           <label>备注</label>
           <input style={remarkInput} value={remark} onInput={this.remarkChange} />
         </div>
-        <div
+        <Button
           style={submitButton}
-          onClick={() => {
+          onMouseDown={() => {
             if (this.state.submiting) return false;
             this.submitType === 'insert' ? this.handleSaveSubmit() : this.handleEditSubmit()
           }}
-        >保存</div>
+        >保存</Button>
       </div >
     );
   }
@@ -563,7 +569,7 @@ const remarkInput = {
   /* display: table-cell; */
   width: '200px',
   height: '36px',
-  paddingLeft:'20px',
+  paddingLeft: '20px',
   border: '1px solid #e8e8e8'
 }
 const headerLabel = {

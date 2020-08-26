@@ -1,6 +1,67 @@
+// &&ROOT&&
 import React, { Component } from 'react';
 import { Button, DatePicker, Select, Table, Input, Row, Col, Form, message } from 'antd';
 import moment from 'moment';
+// ============================================================================================================================================
+// 配置参数
+
+//  columns (必填) 表头字段    editable表示开启编辑功能
+const columns = [{
+    title: '设备', // 表头中文字段
+    key: 'Device' // 对应接口中的字段
+}, {
+    title: '上一班组发电量', // 表头中文字段
+    key: 'beElectric' // 对应接口中的字段
+}, {
+    title: '当下发电量', // 表头中文字段
+    key: 'NowElectric', // 对应接口中的字段
+    editable: true  //开启编辑功能
+}, {
+    title: '本班次发电量', // 表头中文字段
+    key: 'Electric', // 对应接口中的字段
+    // 如果有这个字段表示这是一个计算属性,计算一行中的某个值
+    // 最终的值会变成calc 方法返回的值，而不是接口值
+    // 本班次发电量 = 当下发电量-上一班组发电量
+    calc(data) {
+        // data 表示一行的数据,用于计算
+        return Number(data['NowElectric']) - Number(data['beElectric'])
+    }
+}]
+
+// 处理更新时保存的字段
+// item 表示数据中的一组，用于声明更新字段
+const getUpdateKeys = (item) => {
+    return {
+        NowElectric: item.NowElectric,
+        Electric: item.Electric,
+    };
+}
+
+// 放在底部的， 需要计算行的配置
+const calcRow = [{
+    // 表式放在Device 表头下面，显示的字段为（自用合计）
+    title: '自用合计',
+    key: 'Device',
+    // 表示这三个字段的值式需要计算的
+    calcKey: ['beElectric', 'NowElectric', 'Electric'],
+    // 计算方法 data 表示当前一列所有字段的值用于计算
+    calc(data) {
+        //自用合计=52H+52B1+52B2+52B3
+        return Number(data['52H']) + Number(data['52B1']) + Number(data['52B2']) + Number(data['52B3'])
+    }
+}, {
+    // 表式放在Device 表头下面，显示的字段为 （并网发电）
+    title: '并网发电',
+    key: 'Device',
+    calcKey: ['beElectric', 'NowElectric', 'Electric'],
+    // 计算方法 data 表示当前一列所有字段的值用于计算
+    // 并网发电=余热发电-自用合计
+    calc(data) {
+        // 依赖上面配置项计算值的结果， 要把依赖的配置项写上面
+        return Number(data['余热发电']) - Number(data['自用合计']);
+    }
+}]
+// ============================================================================================================================================
 
 const EditableContext = React.createContext();
 
@@ -13,6 +74,7 @@ const EditableRow = ({ form, index, ...props }) => (
 const EditableFormRow = Form.create()(EditableRow);
 
 class EditableCell extends React.Component {
+
     state = {
         editing: false,
     };
@@ -92,45 +154,24 @@ class EditableCell extends React.Component {
     }
 }
 const dateFormat = 'YYYY-MM-DD';
+const teamOption = [
+    { key: '夜班', value: '夜班' },
+    { key: '白班', value: '白班' },
+    { key: '中班', value: '中班' }
+]
 class CustomComp extends Component {
     element = React.createRef()
     state = {
         data: [],
-        proDate: moment().format(dateFormat),
-        digg: '',
-        userInfo: {},
-        diggs: []
+        date: moment().format(dateFormat),
+        team: teamOption[0].key,
+        unit: '',
+        unitList: [],
+        runTime: '',
+        submiting: false,
+        remark: ''
     }
-    keyMap = {
-        "Diggings": "矿区",
-        "Platform": "平台",
-        "BPL": "日常爆破量",
-        "ZCL": "转场量",
-        "XLL": "下料量",
-    }
-    filterMap = {
-        // "Platform": "平台",
-        "BPL": "日常爆破量",
-        "ZCL": "转场量",
-        "XLL": "下料量",
-    }
-    columns = [
-        {
-            key: 'Diggings',
-        },
-        {
-            key: 'Platform',
-        },
-        {
-            key: 'BPL',
-        },
-        {
-            key: 'ZCL',
-        },
-        {
-            key: 'XLL',
-        }
-    ];
+    columns = columns
     handleColumns = (columns) => {
         return columns.map(el => {
             let item = el;
@@ -140,26 +181,9 @@ class CustomComp extends Component {
             if (!item.children) {
                 item = {
                     ...item,
-                    width: `${100 / 15}%`,
-                    title: this.keyMap[item.key],
+                    width: `${100 / this.columns.length}%`,
                     dataIndex: item.key,
-                    editable: !!this.filterMap[item.key] && item.block !== true,
-                    render: (text, row, index) => {
-                        const obj = {
-                            children: <p style={{ textAlign: 'center', fontSize: '14px', height: '44px', lineHeight: '44px', padding: 0, margin: 0 }}>{text}</p>,
-                            props: {},
-                        }
-                        if (item.key === 'Diggings') {
-                            const { data } = this.state;
-                            const indexByDiggings = data.filter(item => item.Diggings === text);
-                            if (row.id === indexByDiggings[0].id) {
-                                obj.props.rowSpan = indexByDiggings.length
-                            } else {
-                                obj.props.rowSpan = 0
-                            }
-                        }
-                        return obj
-                    },
+                    render: (text) => <p style={{ textAlign: 'center', fontSize: '14px', height: '44px', lineHeight: '44px', padding: 0, margin: 0 }}>{text}</p>,
                     onCell: record => ({
                         record,
                         editable: item.editable,
@@ -180,13 +204,12 @@ class CustomComp extends Component {
             ...item,
             ...row,
         });
-        this.setState({ data: newData });
+        this.setState({ data: this.mergeCalcColumn(this.mergeCalcRow(newData.slice(0, -calcRow.length))) });
     };
-
-
     componentDidMount() {
-        document.getElementById('runtimePage').children[0].style.display = 'none'
-        this.fetchDigg()
+        document.getElementById('runtimePage') && (document.getElementById('runtimePage').children[0].style.display = 'none')
+        this.getRunTime();
+        this.fetchUnitList()
             .then(() => {
                 this.fetchData();
             });
@@ -226,16 +249,21 @@ class CustomComp extends Component {
             this.fetchData();
         })
     }
-    fetchDigg = () => {
+    remarkChange = (e) => {
+        this.setState({
+            remark: e.target.value
+        })
+    }
+    fetchUnitList = () => {
         return new Promise(resolve => {
             scriptUtil.excuteScriptService({
                 objName: "SCGL",
-                serviceName: "Getdiggings",
+                serviceName: "getUnitList",
                 params: {},
                 cb: (res) => {
                     this.setState({
-                        diggs: res.result.list,
-                        digg: res.result.list[0].optionText
+                        unitList: res.result.list,
+                        unit: res.result.list[0].optionValue,
                     }, () => {
                         resolve(res);
                     })
@@ -244,85 +272,116 @@ class CustomComp extends Component {
         })
     }
     fetchData = () => {
-        let { proDate, digg } = this.state;
-
+        let { date, unit, team } = this.state;
         scriptUtil.excuteScriptService({
             objName: "SCGL",
-            serviceName: "GetPlatformByDate",
+            serviceName: "GetDeviceElectricInfo",
             params: {
-                day: proDate, digg
+                ProDate: date,
+                Unit: unit,
+                team
             },
             cb: (res) => {
-                this.staticProDate = res.result.length ? res.result[0].ProDate : '';
                 this.setState({
-                    data: res.result,
+                    runTime: res.result.list[0].RunningTime,
+                    remark: res.result.list[0].Remark,
+                    data: this.mergeCalcColumn(this.mergeCalcRow(res.result.list)),
                 })
             }
         });
     }
+    getRunTime = () => {
+        let { date, team, unit } = this.state;
+
+        scriptUtil.excuteScriptService({
+            objName: "SCGL",
+            serviceName: "GetDeviceRunningTime",
+            params: {
+                date,
+                DeviceId: unit,
+                team
+            },
+            cb: (res) => {
+                this.setState({
+                    runTime: res.result
+                })
+            }
+        })
+    }
+    mergeCalcColumn = (data) => {
+        // 暂时只处理了column配置中计算
+        let newData = data;
+        this.columns.forEach(item => {
+            if (item.calc) {
+                newData = newData.map(dataItem => ({ ...dataItem, [item.key]: item.calc(dataItem) }))
+            }
+        })
+        return newData
+
+    }
+    mergeCalcRow = (data) => {
+        let newData = data;
+        calcRow.map(item => {
+            const calcKey = item.calcKey;
+            const obj = calcKey.reduce((obj, key) => {
+                const keyData = newData.reduce((obj, dItem) => {
+                    obj[dItem[item.key]] = dItem[key]
+                    return obj;
+                }, {})
+                obj[key] = item.calc(keyData);
+                return obj;
+            }, {})
+            newData = newData.concat({
+                [item.key]: item.title,
+                block: true,
+                ...obj,
+            })
+        })
+        return newData;
+    }
 
     handleEditSubmit = () => {
-        const { data, userInfo, digg } = this.state;
+        const { data } = this.state;
         if (!data.length) return false;
-        if (digg !== '官山') {
+        this.setState({
+            submiting: true
+        })
+        const promiseData = data.slice(0, -calcRow.length).map(item => new Promise((resolve) => {
             scriptUtil.excuteScriptService({
-                objName: "PlatformExploitationReport",
+                objName: "DeviceElectricReport",
                 serviceName: "UpdateDataTableEntry",
                 params: {
                     updateData: JSON.stringify({
                         'update': {
-                            XLL: Math.round((data.reduce((val, item) => { val += Number(item.XLL); return val }, 0) * 0.06)) + '',
-                            CreateTime: moment().format("YYYY-MM-DD HH:mm:ss"),
-                            Creator: userInfo.staffName,
+                            ...getUpdateKeys(item),
+                            Createtime: moment().format("YYYY-MM-DD HH:mm:ss"),
+                            Creator: this.state.staffName,
                         },
                         'where': {
-                            Diggings: digg,
-                            ProDate: this.staticProDate,
-                            Platform: '夹石',
+                            id: item.id,
                         }
                     })
                 },
-                cb() { }
-            });
-            scriptUtil.excuteScriptService({
-                objName: "PlatformExploitationReport",
-                serviceName: "UpdateDataTableEntry",
-                params: {
-                    updateData: JSON.stringify({
-                        'update': {
-                            XLL: Math.round((data.reduce((val, item) => { val += Number(item.XLL); return val }, 0) * 0.07)) + '',
-                            CreateTime: moment().format("YYYY-MM-DD HH:mm:ss"),
-                            Creator: userInfo.staffName,
-                        },
-                        'where': {
-                            Diggings: digg,
-                            ProDate: this.staticProDate,
-                            Platform: '剥离物',
-                        }
-                    })
-                },
-                cb() { }
-            });
-        }
-        const promiseData = data.map(item => new Promise((resolve) => {
-            const jsonData = {
-                'update': {
-                    Platform: item.Platform,
-                    BPL: item.BPL,
-                    ZCL: item.ZCL,
-                    XLL: item.XLL,
-                    CreateTime: moment().format("YYYY-MM-DD HH:mm:ss"),
-                    Creator: userInfo.staffName,
-                },
-                'where': {
-                    id: item.id,
+                cb: (res) => {
+                    resolve(res.result)
                 }
-            };
+            });
+        })).concat(new Promise(resolve => {
             scriptUtil.excuteScriptService({
-                objName: "PlatformExploitationReport",
+                objName: "DeviceElectricReport",
                 serviceName: "UpdateDataTableEntry",
                 params: {
-                    updateData: JSON.stringify(jsonData)
+                    updateData: JSON.stringify({
+                        update: {
+                            Remark: this.state.remark,
+                            RunningTime: Number(this.state.runTime),
+                        },
+                        where: {
+                            Unit: this.state.unit,
+                            ProDate: this.state.date,
+                            team: this.state.team,
+                        }
+                    })
                 },
                 cb: (res) => {
                     resolve(res.result)
@@ -330,11 +389,14 @@ class CustomComp extends Component {
             });
         }))
         Promise.all(promiseData).then(res => {
+            this.setState({
+                submiting: false
+            })
             message.success('保存成功');
         })
     }
     render() {
-        const { proDate, digg, data, diggs } = this.state;
+        const { date, team, data, unit, unitList, runTime, remark } = this.state;
         const components = {
             body: {
                 row: EditableFormRow,
@@ -351,29 +413,49 @@ class CustomComp extends Component {
                         </Col>
                         <Col span={7} style={borderTopRight}>
                             <DatePicker
-                                onChange={(D, dateString) => this.onSerchKeyChange('proDate', dateString)}
-                                defaultValue={moment(proDate)}
+                                onChange={(D, dateString) => this.onSerchKeyChange('date', dateString)}
+                                defaultValue={moment(date)}
                                 suffixIcon={() => null}
                             >
                             </DatePicker>
                         </Col>
                         <Col span={5} style={borderTopRight}>
-                            <label style={headerLabel}>矿区：</label>
+                            <label style={headerLabel}>班组：</label>
                         </Col>
                         <Col span={7} style={Object.assign({}, borderTopRight, rightBorderNone)}>
                             <div ref={this.select}>
                                 <Select
                                     style={selectStyle}
-                                    value={digg}
-                                    onChange={(value, e) => this.onSerchKeyChange('digg', value)}
+                                    value={team}
+                                    onChange={(value, e) => this.onSerchKeyChange('team', value)}
                                 >
                                     {
-                                        diggs.map(item => (
-                                            <Select.Option value={item.optionText}>{item.optionText}</Select.Option>
+                                        teamOption.map(item => (
+                                            <Select.Option value={item.value}>{item.value}</Select.Option>
                                         ))
                                     }
                                 </Select>
                             </div>
+                        </Col>
+                    </Row>
+                    <Row>
+                        <Col span={5} style={borderTopRight}>
+                            <label style={headerLabel}>机组：</label>
+                        </Col>
+                        <Col span={7} style={borderTopRight}>
+                            <Select
+                                style={selectStyle}
+                                value={unit}
+                                onChange={(value) => this.onSerchKeyChange('unit', value)}
+                            >
+                                {unitList.map(item => <Select.Option value={item.optionValue}>{item.optionText}</Select.Option>)}
+                            </Select>
+                        </Col>
+                        <Col span={5} style={borderTopRight}>
+                            <label style={headerLabel}>运行时长：</label>
+                        </Col>
+                        <Col span={7} style={Object.assign({}, borderTopRight, rightBorderNone)}>
+                            <Input value={runTime} onChange={(e) => this.setState({ runTime: e.target.value })} />
                         </Col>
                     </Row>
                 </div>
@@ -386,18 +468,25 @@ class CustomComp extends Component {
                         pagination={false}
                         bordered
                     />
+                    <div style={remarkWrapper}>
+                        <label>备注</label>
+                        <input style={remarkInput} value={remark} onInput={this.remarkChange} />
+                    </div>
                 </div>
-                <div
+                <Button
                     style={submitButton}
-                    onClick={this.handleEditSubmit}
-                >保存</div>
+                    onClick={(e) => {
+                        if (this.state.submiting) return false;
+                        this.handleEditSubmit()
+                    }}
+                >保存</Button>
             </div >
         );
     }
 }
-
 export default CustomComp;
 
+// 组件用到的样式
 const containerWrapper = {
     position: 'absolute',
     left: 0,
@@ -419,7 +508,6 @@ const borderTopRight = {
 const rightBorderNone = {
     borderRight: 'none'
 }
-// 搜索栏
 const serchHeader = {
     overflow: 'hidden',
 }
@@ -439,6 +527,27 @@ const submitButton = {
     textAlign: 'center'
 }
 
+const remarkWrapper = {
+    display: 'flex',
+    alignItems: 'center',
+    lineHeight: '44px',
+    paddingLeft: '20px',
+    borderBottom: '1px solid #e8e8e8'
+}
+
+const remarkInput = {
+    flex: 1,
+    border: 'none',
+    marginLeft: '20px',
+    /* display: table-cell; */
+    width: '200px',
+    height: '36px',
+    paddingLeft: '20px',
+    border: '1px solid #e8e8e8'
+}
+
+
+// 默认css样式
 var css = document.createElement('style');
 css.type = 'text/css';
 css.id = 'CustomCompStyle';

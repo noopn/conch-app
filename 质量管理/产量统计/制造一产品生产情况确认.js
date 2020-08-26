@@ -44,7 +44,7 @@ document.getElementsByTagName('head')[0].appendChild(css);
 const EditableContext = React.createContext();
 
 const Factory = '制造一';
-const Type = '原料磨';
+//const Type = '原料磨';
 
 const EditableRow = ({ form, index, ...props }) => (
     <EditableContext.Provider value={form}>
@@ -150,48 +150,26 @@ class CustomComp extends Component {
         this.state = {
             data: [],
             proDate: moment().format(dateFormat),
-            team: "", // 班组
             buttonType: null,
             typeData: [],
-            crusher: [],
-            currentCrusher: '',
             submiting: false,
-            runTime: '',
-            remark: ''
         };
         this.element = React.createRef()
     }
 
-    get teamOption() {
-        const arr = [];
-        if (moment(`${this.state.proDate} 08:00:00`, 'YYYY-MM-DD HH:mm:ss').valueOf() <= moment().valueOf()) {
-            arr.push({ key: '夜班', value: '夜班' })
-        }
-        if (moment(`${this.state.proDate} 16:00:00`, 'YYYY-MM-DD HH:mm:ss').valueOf() <= moment().valueOf()) {
-            arr.push({ key: '白班', value: '白班' })
-        }
-        if (moment(this.state.proDate, 'YYYY-MM-DD').endOf('day').valueOf() <= moment().valueOf()) {
-            arr.push({ key: '中班', value: '中班' })
-        }
-        if (!arr.length) {
-            arr.push({ key: 'null', value: '暂无班组查询' })
-        }
-        return arr;
-    }
     columns = [
         {
-            title: '设备',
-            key: 'DeviceName',
+            title: '项目',
+            key: 'ProduceYard',
             align: 'center',
-            dataIndex: 'DeviceName',
+            dataIndex: 'ProduceYard',
             render: (text, row,) => {
                 const obj = {
                     children: text,
                     props: {},
                 }
                 const { data } = this.state;
-                const lime = data.filter(item => item.DeviceName === row.DeviceName);
-                console.log(lime, row)
+                const lime = data.filter(item => item.ProduceYard === row.ProduceYard);
 
                 if (row.id === lime[0].id) {
                     obj.props.rowSpan = lime.length
@@ -202,13 +180,26 @@ class CustomComp extends Component {
             },
         },
         {
-            title: '原材料',
-            key: 'Raw',
+            title: '堆场',
+            key: 'YardName',
             align: 'center',
-            dataIndex: 'Raw',
+            dataIndex: 'YardName',
         },
         {
-            title: '消耗量（吨）',
+            title: '日生产（吨）',
+            key: 'Expent',
+            align: 'center',
+            dataIndex: 'Expent',
+            onCell: record => ({
+                record,
+                editable: true,
+                dataIndex: 'Expent',
+                title: '生产',
+                handleSave: this.handleSave,
+            })
+        },
+        {
+            title: '日输出（吨）',
             key: 'OutPut',
             align: 'center',
             dataIndex: 'OutPut',
@@ -216,7 +207,7 @@ class CustomComp extends Component {
                 record,
                 editable: true,
                 dataIndex: 'OutPut',
-                title: '产量',
+                title: '输出',
                 handleSave: this.handleSave,
             })
         }
@@ -231,11 +222,6 @@ class CustomComp extends Component {
         });
         this.setState({ data: this.rowMount(newData.slice(0, -1)) });
     };
-    componentWillMount() {
-        this.setState({
-            team: this.teamOption[0].key
-        })
-    }
     componentDidMount() {
         scriptUtil.getUserInfo(user => {
             scriptUtil.excuteScriptService({
@@ -253,22 +239,7 @@ class CustomComp extends Component {
                 }
             });
         });
-        new Promise((resolve) => {
-            scriptUtil.excuteScriptService({
-                objName: "SCGL",
-                serviceName: "GetDevice",
-                params: { Factory, Type },
-                cb: (res) => {
-                    this.setState({
-                        crusher: res.result.list,
-                        currentCrusher: res.result.list[0].optionValue
-                    })
-                    resolve()
-                }
-            });
-        }).then(() => {
-            this.fetchData();
-        })
+        this.fetchData();
         if (this.element && this.element.current) {
             ["touchstart", "touchmove", "touchend"].forEach((event) => {
                 this.element.current.addEventListener(event, (e) => {
@@ -282,11 +253,6 @@ class CustomComp extends Component {
         this.setState({
             [key]: value
         }, () => {
-            if (key === 'proDate') {
-                this.setState({
-                    team: this.teamOption[0].key
-                })
-            }
             this.fetchData();
         })
     }
@@ -294,70 +260,49 @@ class CustomComp extends Component {
 
     rowMount = (data) => {
         if (!data.length) return [];
-        const mount = data.reduce((mount, item) => { mount += Number(item.OutPut); return mount }, 0)
-        return data.concat({ DeviceName: '合计', block: true, OutPut: mount })
+        const mount = data.reduce((mount, item) => { mount += Number(item.OutPut); return mount }, 0);
+        const expent = data.reduce((expent, item) => { expent += Number(item.Expent); return expent }, 0);
+
+        return data.concat({ YardName: '合计', block: true, Expent: expent, OutPut: mount })
     }
 
 
-    getRunTime = () => {
-        let { proDate, team, currentCrusher } = this.state;
-
-        scriptUtil.excuteScriptService({
-            objName: "SCGL",
-            serviceName: "GetDeviceRunningTime",
-            params: {
-                prodate: proDate,
-                DeviceId: currentCrusher,
-                team
-            },
-            cb: (res) => {
-                this.setState({
-                    runTime: res.result
-                })
-            }
-        })
-    }
 
     fetchData = () => {
-        let { proDate, team, currentCrusher } = this.state;
+        let { proDate } = this.state;
         // proDate = proDate.split('-').map(item => Number(item)).join('-');
-        if (team === 'null' || proDate === '') {
+        if (proDate === '') {
             message.warn('请检查查询参数,或切换查询日期');
             return false;
         }
         scriptUtil.excuteScriptService({
             objName: "SCGL",
-            serviceName: "GetDeviceReport",
+            serviceName: "GetYardOutPutInfo",
             params: {
                 ProDate: proDate,
-                Device: currentCrusher,
-                Team: team,
+                Factory: "制造一"
             },
             cb: (res) => {
                 if (res.result.list.length === 0) {
-                    this.getRunTime();
+                    //this.getRunTime();
                     scriptUtil.excuteScriptService({
                         objName: "SCGL",
-                        serviceName: "GetProduceOutPut",
+                        serviceName: "GetYardProduceData",
                         params: {
-                            day: proDate,
-                            Deviceid: currentCrusher,
-                            Team: team,
+                            ProDate: proDate,
+                            Factory: "制造一"
                         },
                         cb: (res) => {
                             this.submitType = 'insert'
                             this.setState({
-                                data: this.rowMount(res.result.list),
-                                remark: ''
+                                data: this.rowMount(res.result.list)
                             })
                         }
                     });
                 } else {
                     this.submitType = 'update'
                     this.setState({
-                        data: this.rowMount(res.result.list),
-                        remark: res.result.list[0].Remark,
-                        runTime: res.result.list[0].RunningTime
+                        data: this.rowMount(res.result.list)
                     })
                 }
             }
@@ -369,20 +314,18 @@ class CustomComp extends Component {
             submiting: true
         })
         scriptUtil.excuteScriptService({
-            objName: 'DeviceReport',
+            objName: 'YardOutPut',
             serviceName: 'AddDataTableEntries',
             params: {
                 params: JSON.stringify({
                     list: data.slice(0, -1).map(item => ({
-                        DeviceId: this.state.currentCrusher,
-                        team: this.state.team,
+                        ProduceYard: item.ProduceYard,
                         ProDate: this.state.proDate,
-                        RunningTime: Number(this.state.runTime),
-                        Remark: this.state.remark,
                         Creator: this.state.staffName,
                         CreatTime: moment().format('YYYY-MM-DD HH:mm:ss'),
-                        Raw: item.Raw,
-                        Expent: Number(item.OutPut)
+                        OutPut: Number(item.OutPut),
+                        Factory: "制造一",
+                        Expent: Number(item.Expent)
                     }))
                 })
             },
@@ -391,7 +334,7 @@ class CustomComp extends Component {
                 this.setState({
                     submiting: false
                 })
-                this.submitType = 'update' 
+                this.submitType = 'update'
                 return res.result;
             }
         });
@@ -405,14 +348,15 @@ class CustomComp extends Component {
         const promiseData = data.slice(0, -1).map(item => new Promise((resolve) => {
             const jsonData = {
                 update: {
-                    Expent: Number(item.OutPut),
+                    Expent: Number(item.Expent),
+                    OutPut: Number(item.OutPut)
                 },
                 where: {
                     id: item.id
                 }
             };
             scriptUtil.excuteScriptService({
-                objName: "DeviceReport",
+                objName: "YardOutPut",
                 serviceName: "UpdateDataTableEntry",
                 params: {
                     updateData: JSON.stringify(jsonData)
@@ -420,27 +364,6 @@ class CustomComp extends Component {
                 cb: (res) => {
                     resolve(res.result)
                     return res.result;
-                }
-            });
-        })).concat(new Promise(resolve => {
-            scriptUtil.excuteScriptService({
-                objName: "DeviceReport",
-                serviceName: "UpdateDataTableEntry",
-                params: {
-                    updateData: JSON.stringify({
-                        update: {
-                            Remark: this.state.remark,
-                            RunningTime: Number(this.state.runTime),
-                        },
-                        where: {
-                            DeviceId: this.state.currentCrusher,
-                            ProDate: this.state.proDate,
-                            team: this.state.team,
-                        }
-                    })
-                },
-                cb: (res) => {
-                    resolve(res.result)
                 }
             });
         }))
@@ -458,7 +381,7 @@ class CustomComp extends Component {
     }
     disabledDate = (current) => current && current > moment().endOf('day');
     render() {
-        const { proDate, team, data, currentCrusher, runTime, remark } = this.state;
+        const { proDate, data, } = this.state;
         const components = {
             body: {
                 row: EditableFormRow,
@@ -482,39 +405,10 @@ class CustomComp extends Component {
                             >
                             </DatePicker>
                         </Col>
-                        <Col span={5} style={borderTopRight}>
-                            <label style={headerLabel}>班组：</label>
-                        </Col>
-                        <Col span={7} style={Object.assign({}, borderTopRight, rightBorderNone)}>
-                            <Select
-                                style={selectStyle}
-                                value={team}
-                                onChange={(value) => this.onSerchKeyChange('team', value)}
-                            >
-                                {this.teamOption.map(item => <Select.Option value={item.key}>{item.value}</Select.Option>)}
-                            </Select>
-                        </Col>
+                        <Col span={5} style={borderTopRight} />
+                        <Col span={7} style={borderTopRight} />
                     </Row>
-                    <Row>
-                        <Col span={5} style={borderTopRight}>
-                            <label style={headerLabel}>破碎机：</label>
-                        </Col>
-                        <Col span={7} style={borderTopRight}>
-                            <Select
-                                style={selectStyle}
-                                value={currentCrusher}
-                                onChange={(value) => this.onSerchKeyChange('currentCrusher', value)}
-                            >
-                                {this.state.crusher.map(item => <Select.Option value={item.optionValue}>{item.optionText}</Select.Option>)}
-                            </Select>
-                        </Col>
-                        <Col span={5} style={borderTopRight}>
-                            <label style={headerLabel}>运行时长：</label>
-                        </Col>
-                        <Col span={7} style={Object.assign({}, borderTopRight, rightBorderNone)}>
-                            <Input value={runTime} onChange={(e) => this.setState({ runTime: e.target.value })} />
-                        </Col>
-                    </Row>
+
                 </div>
                 <Table
                     style={{ wordBreak: 'break-all' }}
@@ -524,10 +418,6 @@ class CustomComp extends Component {
                     pagination={false}
                     bordered
                 />
-                <div style={remarkWrapper}>
-                    <label>备注</label>
-                    <input style={remarkInput} value={remark} onInput={this.remarkChange} />
-                </div>
                 <Button
                     style={submitButton}
                     onClick={() => {
@@ -549,23 +439,6 @@ const containerWrapper = {
     top: 0,
     bottom: 0,
     margin: 'auto'
-}
-const remarkWrapper = {
-    display: 'flex',
-    alignItems: 'center',
-    lineHeight: '44px',
-    paddingLeft: '20px',
-    borderBottom: '1px solid #e8e8e8'
-}
-const remarkInput = {
-    flex: 1,
-    border: 'none',
-    marginLeft: '20px',
-    /* display: table-cell; */
-    width: '200px',
-    height: '36px',
-    paddingLeft: '20px',
-    border: '1px solid #e8e8e8'
 }
 const headerLabel = {
     whiteSpace: 'nowrap'

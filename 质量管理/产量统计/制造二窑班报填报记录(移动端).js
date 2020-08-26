@@ -43,8 +43,8 @@ css.innerHTML = `
 document.getElementsByTagName('head')[0].appendChild(css);
 const EditableContext = React.createContext();
 
-const Factory = '制造一';
-const Type = '原料磨';
+const Factory = '制造二';
+const Type = '窑';
 
 const EditableRow = ({ form, index, ...props }) => (
     <EditableContext.Provider value={form}>
@@ -387,11 +387,11 @@ class CustomComp extends Component {
                 })
             },
             cb: (res) => {
-                message.success('保存成功');
+                message.success('保存成功'); s
                 this.setState({
                     submiting: false
                 })
-                this.submitType = 'update' 
+                this.submitType = 'update'
                 return res.result;
             }
         });
@@ -528,13 +528,13 @@ class CustomComp extends Component {
                     <label>备注</label>
                     <input style={remarkInput} value={remark} onInput={this.remarkChange} />
                 </div>
-                <Button
+                <div
                     style={submitButton}
                     onClick={() => {
                         if (this.state.submiting) return false;
                         this.submitType === 'insert' ? this.handleSaveSubmit() : this.handleEditSubmit()
                     }}
-                >保存</Button>
+                >保存</div>
             </div >
         );
     }
