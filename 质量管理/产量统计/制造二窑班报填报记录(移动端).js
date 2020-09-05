@@ -39,6 +39,10 @@ css.innerHTML = `
     .ant-select-selection {
       border:none
     }
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+    }
     `;
 document.getElementsByTagName('head')[0].appendChild(css);
 const EditableContext = React.createContext();
@@ -70,7 +74,7 @@ class EditableCell extends React.Component {
                         e.stopPropagation();
                     }, false)
                 }
-                if (dataIndex === 'value') {
+                if (dataIndex === 'OutPut') {
                     this.input.focus();
                 }
                 if (dataIndex === 'type') {
@@ -100,12 +104,13 @@ class EditableCell extends React.Component {
                 {form.getFieldDecorator(`${dataIndex}-${record.id}`, {
                     rules: [
                         {
-                            pattern: /^[1-9]\d*(\.\d{1,2})?$|^0+(\.\d{1,2})?$/,
+                            pattern: /^(-|[1-9])\d*(\.\d{1,2})?$|^0+(\.\d{1,2})?$/,
                             message: '数字不合法',
                         },
                     ],
                     initialValue: record[dataIndex],
                 })(<Input
+                    type='input'
                     ref={node => (this.input = node)}
                     onPressEnter={() => this.save(`${dataIndex}-${record.id}`)}
                     onBlur={() => this.save(`${dataIndex}-${record.id}`)}
@@ -212,6 +217,7 @@ class CustomComp extends Component {
             key: 'OutPut',
             align: 'center',
             dataIndex: 'OutPut',
+            render: text => <p style={{ textAlign: 'center', fontSize: '14px', height: '32px', lineHeight: '32px', padding: 0, margin: 0 }}>{text}</p>,
             onCell: record => ({
                 record,
                 editable: true,
@@ -294,8 +300,8 @@ class CustomComp extends Component {
 
     rowMount = (data) => {
         if (!data.length) return [];
-        const mount = data.reduce((mount, item) => { mount += Number(item.OutPut); return mount }, 0)
-        return data.concat({ DeviceName: '合计', block: true, OutPut: mount })
+        // const mount = data.reduce((mount, item) => { mount += Number(item.OutPut); return mount }, 0)
+        return data.concat({ Raw: '熟料产量', block: true, OutPut: (data[0].OutPut/1.59).toFixed(2) })
     }
 
 
@@ -387,7 +393,7 @@ class CustomComp extends Component {
                 })
             },
             cb: (res) => {
-                message.success('保存成功'); s
+                message.success('保存成功');
                 this.setState({
                     submiting: false
                 })

@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { Button, DatePicker, Select, Table, Input, Popconfirm, Form, message, Row, Col } from 'antd';
+import { Button, DatePicker, Select, Table, Input, Spin, Form, message, Row, Col } from 'antd';
 import moment from 'moment';
 var css = document.createElement('style');
 css.type = 'text/css';
@@ -39,6 +39,13 @@ css.innerHTML = `
     .ant-select-selection {
       border:none
     }
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+    }
+    #htDiv-kenz60pc0-954 .ant-spin-nested-loading .ant-spin-container {
+        overflow: visible !important;
+    }
     `;
 document.getElementsByTagName('head')[0].appendChild(css);
 const EditableContext = React.createContext();
@@ -57,7 +64,6 @@ class EditableCell extends React.Component {
         editing: false,
     };
     toggleEdit = (record, id, dataIndex, e) => {
-        console.log(record, id, dataIndex, e)
         e && e.stopPropagation();
         if (record.block) return false;
         const editing = !this.state.editing;
@@ -65,12 +71,11 @@ class EditableCell extends React.Component {
             if (editing) {
                 // ht的mousedown事件会触发react的onblur事件 需要阻止事件冒泡
                 if (id) {
-                    console.log(id);
                     document.querySelector(`#${id}`).addEventListener('mousedown', (e) => {
                         e.stopPropagation();
                     }, false)
                 }
-                if (dataIndex === 'value') {
+                if (dataIndex === 'OutPut') {
                     this.input.focus();
                 }
                 if (dataIndex === 'type') {
@@ -93,19 +98,20 @@ class EditableCell extends React.Component {
 
     renderCell = form => {
         this.form = form;
-        const { children, dataIndex, record, title, typeData } = this.props;
+        const { children, dataIndex, record } = this.props;
         const { editing } = this.state;
         return editing ? (
             <Form.Item style={{ margin: 0 }}>
                 {form.getFieldDecorator(`${dataIndex}-${record.id}`, {
                     rules: [
                         {
-                            pattern: /^[1-9]\d*(\.\d{1,2})?$|^0+(\.\d{1,2})?$/,
+                            pattern: /^-?[1-9]\d*(\.\d{1,2})?$|^0+(\.\d{1,2})?$/,
                             message: '数字不合法',
                         },
                     ],
                     initialValue: record[dataIndex],
                 })(<Input
+                    type='number'
                     ref={node => (this.input = node)}
                     onPressEnter={() => this.save(`${dataIndex}-${record.id}`)}
                     onBlur={() => this.save(`${dataIndex}-${record.id}`)}
@@ -148,6 +154,7 @@ class CustomComp extends Component {
     constructor(props) {
         super(props)
         this.state = {
+            visable: false,
             data: [],
             proDate: moment().format(dateFormat),
             team: "", // 班组
@@ -157,7 +164,9 @@ class CustomComp extends Component {
             currentCrusher: '',
             submiting: false,
             runTime: '',
-            remark: ''
+            remark: '',
+            message: '',
+            icon: ''
         };
         this.element = React.createRef()
     }
@@ -191,8 +200,6 @@ class CustomComp extends Component {
                 }
                 const { data } = this.state;
                 const lime = data.filter(item => item.DeviceName === row.DeviceName);
-                console.log(lime, row)
-
                 if (row.id === lime[0].id) {
                     obj.props.rowSpan = lime.length
                 } else {
@@ -212,6 +219,7 @@ class CustomComp extends Component {
             key: 'OutPut',
             align: 'center',
             dataIndex: 'OutPut',
+            render: text => <p style={{ textAlign: 'center', fontSize: '14px', height: '32px', lineHeight: '32px', padding: 0, margin: 0 }}>{text}</p>,
             onCell: record => ({
                 record,
                 editable: true,
@@ -325,6 +333,10 @@ class CustomComp extends Component {
             message.warn('请检查查询参数,或切换查询日期');
             return false;
         }
+        this.setState({
+            visable: true,
+            message: '加载中。。。',
+        })
         scriptUtil.excuteScriptService({
             objName: "SCGL",
             serviceName: "GetDeviceReport",
@@ -345,29 +357,34 @@ class CustomComp extends Component {
                             Team: team,
                         },
                         cb: (res) => {
-                            this.submitType = 'insert'
+
+                            if (!res.result) { return false; }
                             this.setState({
+                                submitType: 'insert',
                                 data: this.rowMount(res.result.list),
                                 remark: ''
                             })
                         }
                     });
                 } else {
-                    this.submitType = 'update'
+                    if (!res.result) { return false; }
                     this.setState({
+                        submitType: 'update',
                         data: this.rowMount(res.result.list),
                         remark: res.result.list[0].Remark,
                         runTime: res.result.list[0].RunningTime
                     })
                 }
+                this.setState({
+                    visable: false,
+                    message: '',
+                })
             }
         });
     }
     handleSaveSubmit = () => {
         let { data } = this.state;
-        this.setState({
-            submiting: true
-        })
+
         scriptUtil.excuteScriptService({
             objName: 'DeviceReport',
             serviceName: 'AddDataTableEntries',
@@ -389,9 +406,8 @@ class CustomComp extends Component {
             cb: (res) => {
                 message.success('保存成功');
                 this.setState({
-                    submiting: false
+                    visable: false
                 })
-                this.submitType = 'update' 
                 return res.result;
             }
         });
@@ -402,7 +418,7 @@ class CustomComp extends Component {
         this.setState({
             submiting: true
         })
-        const promiseData = data.slice(0, -1).map(item => new Promise((resolve) => {
+        const promiseData = data.slice(0, -1).map(item => new Promise((resolve, reject) => {
             const jsonData = {
                 update: {
                     Expent: Number(item.OutPut),
@@ -418,7 +434,11 @@ class CustomComp extends Component {
                     updateData: JSON.stringify(jsonData)
                 },
                 cb: (res) => {
-                    resolve(res.result)
+                    if (!res.result) {
+                        reject(res);
+                    } else {
+                        resolve(res.result);
+                    }
                     return res.result;
                 }
             });
@@ -440,15 +460,23 @@ class CustomComp extends Component {
                     })
                 },
                 cb: (res) => {
-                    resolve(res.result)
+                    if (!res.result) {
+                        reject(res);
+                    } else {
+                        resolve(res.result);
+                    }
+                    return res.result;
                 }
             });
         }))
         Promise.all(promiseData).then(res => {
-            this.setState({
-                submiting: false
-            })
             message.success('修改成功')
+        }).catch(()=>{
+            message.error('修改失败')
+        }).then(()=>{
+            this.setState({
+                visable: false
+            })
         })
     }
     remarkChange = (e) => {
@@ -457,8 +485,33 @@ class CustomComp extends Component {
         })
     }
     disabledDate = (current) => current && current > moment().endOf('day');
+
+    submit = () => {
+        const { proDate, team, currentCrusher } = this.state;
+        this.setState({
+            visable: true,
+            message: '提交中...'
+        })
+        scriptUtil.excuteScriptService({
+            objName: "SCGL",
+            serviceName: "GetDeviceReport",
+            params: {
+                ProDate: proDate,
+                Device: currentCrusher,
+                Team: team,
+            },
+            cb: (res) => {
+                if (res.result.list.length === 0) {
+                    this.handleSaveSubmit()
+                } else {
+                    this.handleEditSubmit()
+                }
+            }
+        });
+    }
+
     render() {
-        const { proDate, team, data, currentCrusher, runTime, remark } = this.state;
+        const { proDate, team, data, currentCrusher, runTime, remark, message, visable, submitType } = this.state;
         const components = {
             body: {
                 row: EditableFormRow,
@@ -466,76 +519,75 @@ class CustomComp extends Component {
             },
         };
         return (
-            <div style={containerWrapper} ref={this.element}>
-                <div style={serchHeader}>
-                    <Row>
-                        <Col span={5} style={borderTopRight}>
-                            <label style={headerLabel}>日期：</label>
-                        </Col>
-                        <Col span={7} style={borderTopRight}>
-                            <DatePicker
-                                disabledDate={this.disabledDate}
-                                style={datePickerStyle}
-                                onChange={(D, dateString) => this.onSerchKeyChange('proDate', dateString)}
-                                defaultValue={moment(proDate)}
-                                suffixIcon={() => null}
-                            >
-                            </DatePicker>
-                        </Col>
-                        <Col span={5} style={borderTopRight}>
-                            <label style={headerLabel}>班组：</label>
-                        </Col>
-                        <Col span={7} style={Object.assign({}, borderTopRight, rightBorderNone)}>
-                            <Select
-                                style={selectStyle}
-                                value={team}
-                                onChange={(value) => this.onSerchKeyChange('team', value)}
-                            >
-                                {this.teamOption.map(item => <Select.Option value={item.key}>{item.value}</Select.Option>)}
-                            </Select>
-                        </Col>
-                    </Row>
-                    <Row>
-                        <Col span={5} style={borderTopRight}>
-                            <label style={headerLabel}>破碎机：</label>
-                        </Col>
-                        <Col span={7} style={borderTopRight}>
-                            <Select
-                                style={selectStyle}
-                                value={currentCrusher}
-                                onChange={(value) => this.onSerchKeyChange('currentCrusher', value)}
-                            >
-                                {this.state.crusher.map(item => <Select.Option value={item.optionValue}>{item.optionText}</Select.Option>)}
-                            </Select>
-                        </Col>
-                        <Col span={5} style={borderTopRight}>
-                            <label style={headerLabel}>运行时长：</label>
-                        </Col>
-                        <Col span={7} style={Object.assign({}, borderTopRight, rightBorderNone)}>
-                            <Input value={runTime} onChange={(e) => this.setState({ runTime: e.target.value })} />
-                        </Col>
-                    </Row>
-                </div>
-                <Table
-                    style={{ wordBreak: 'break-all' }}
-                    components={components}
-                    columns={this.columns}
-                    dataSource={data}
-                    pagination={false}
-                    bordered
-                />
-                <div style={remarkWrapper}>
-                    <label>备注</label>
-                    <input style={remarkInput} value={remark} onInput={this.remarkChange} />
-                </div>
-                <Button
-                    style={submitButton}
-                    onClick={() => {
-                        if (this.state.submiting) return false;
-                        this.submitType === 'insert' ? this.handleSaveSubmit() : this.handleEditSubmit()
-                    }}
-                >保存</Button>
-            </div >
+            <Spin tip={message} spinning={visable}>
+                <div style={containerWrapper} ref={this.element}>
+                    <div style={serchHeader}>
+                        <Row>
+                            <Col span={5} style={borderTopRight}>
+                                <label style={headerLabel}>日期：</label>
+                            </Col>
+                            <Col span={7} style={borderTopRight}>
+                                <DatePicker
+                                    disabledDate={this.disabledDate}
+                                    style={datePickerStyle}
+                                    onChange={(D, dateString) => this.onSerchKeyChange('proDate', dateString)}
+                                    defaultValue={moment(proDate)}
+                                    suffixIcon={() => null}
+                                >
+                                </DatePicker>
+                            </Col>
+                            <Col span={5} style={borderTopRight}>
+                                <label style={headerLabel}>班组：</label>
+                            </Col>
+                            <Col span={7} style={Object.assign({}, borderTopRight, rightBorderNone)}>
+                                <Select
+                                    style={selectStyle}
+                                    value={team}
+                                    onChange={(value) => this.onSerchKeyChange('team', value)}
+                                >
+                                    {this.teamOption.map(item => <Select.Option value={item.key}>{item.value}</Select.Option>)}
+                                </Select>
+                            </Col>
+                        </Row>
+                        <Row>
+                            <Col span={5} style={borderTopRight}>
+                                <label style={headerLabel}>破碎机：</label>
+                            </Col>
+                            <Col span={7} style={borderTopRight}>
+                                <Select
+                                    style={selectStyle}
+                                    value={currentCrusher}
+                                    onChange={(value) => this.onSerchKeyChange('currentCrusher', value)}
+                                >
+                                    {this.state.crusher.map(item => <Select.Option value={item.optionValue}>{item.optionText}</Select.Option>)}
+                                </Select>
+                            </Col>
+                            <Col span={5} style={borderTopRight}>
+                                <label style={headerLabel}>运行时长：</label>
+                            </Col>
+                            <Col span={7} style={Object.assign({}, borderTopRight, rightBorderNone)}>
+                                <Input value={runTime} onChange={(e) => this.setState({ runTime: e.target.value })} />
+                            </Col>
+                        </Row>
+                    </div>
+                    <Table
+                        style={{ wordBreak: 'break-all' }}
+                        components={components}
+                        columns={this.columns}
+                        dataSource={data}
+                        pagination={false}
+                        bordered
+                    />
+                    <div style={remarkWrapper}>
+                        <label>备注</label>
+                        <input style={remarkInput} value={remark} onInput={this.remarkChange} />
+                    </div>
+                    <Button
+                        style={submitButton}
+                        onClick={this.submit}
+                    >{submitType === 'insert' ? '保存' : '修改'}</Button>
+                </div >
+            </Spin>
         );
     }
 }

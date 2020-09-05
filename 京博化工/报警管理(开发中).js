@@ -91,7 +91,7 @@ class AlarmManager extends React.PureComponent {
             alarmId: '', // 传入操作栏用于展示的行id
             queryObjName: '' || OBJ_NAME_TEST, // 查询对象名称
             queryPropName: '' || PROP_NAME_TEST, // 查询属性名称
-            objName: '',//对象名称
+            objName: '',//对象实例
             propName: '',//属性名称
             propDesc: '',//属性描述
             priority: '',//优先级(报警等级)
@@ -111,6 +111,9 @@ class AlarmManager extends React.PureComponent {
             objType: '' || '全部',//对象分类
             objTypeList: [],//对象分类列表
             objTypeName: '',//对象分类名字
+            mailqueryByName: '',//用户名自站内信赛选
+            dingdingUser: '',//钉钉用户
+            dingdingGroup: '',//钉钉群组
         };
 
         this.handleAlarmInfoModalOpen = this.handleAlarmInfoModalOpen.bind(this);
@@ -283,8 +286,11 @@ class AlarmManager extends React.PureComponent {
                 objLabel: this.state.queryPropObjById == '全部' ? '' : this.state.queryPropObjById,//对象标签
                 propLabel: this.state.queryObjLabelByid == '全部' ? '' : this.state.queryObjLabelByid,//属性标签
                 propName: this.state.queryPropName == '全部' ? '' : this.state.queryPropName,//属性名称
-                objName: this.state.queryObjName == '全部' ? '' : this.state.queryObjName,//对象名称
+                objName: this.state.queryObjName == '全部' ? '' : this.state.queryObjName,//对象实例
                 typeId: this.state.typeId == '请选择' ? '' : this.state.typeId,//报警类别id
+                mailqueryByName: this.state.mailqueryByName,//站内信名字
+                dingdingGroup: this.state.dingdingGroup,//钉钉群名字
+                dingdingUser: this.state.dingdingUser,//钉钉用户
             },
         };
         scriptUtil.excuteScriptService(serviceConfig, (res) => {
@@ -345,7 +351,7 @@ class AlarmManager extends React.PureComponent {
             });
     }
 
-    // 获取对象名称
+    // 对象实例
     getObjNameList = (value, callback) => {
         if (objNameTimeout) {
             clearTimeout(objNameTimeout);
@@ -757,7 +763,7 @@ class AlarmManager extends React.PureComponent {
 
     }
 
-    // 搜索展开选择对象名称选择器
+    // 搜索展开选择对象实例选择器
     handleObjNameSearch(value) {
         // if (value) {
         this.getObjNameList(value, listData =>
@@ -771,7 +777,7 @@ class AlarmManager extends React.PureComponent {
         //   });
         // }
     }
-    // 对象名称选择器名称改变
+    // 对象实例选择器名称改变
     handleObjTypeSearch(value) {
         this.getObjTypeList(value, listData =>
             this.setState({
@@ -886,7 +892,7 @@ class AlarmManager extends React.PureComponent {
         });
     }
 
-    // 查询对象名称选择器名称改变
+    // 查询对象实例选择器名称改变
     handleQueryObjNameChange(value) {
         console.log(value)
         this.setState(
@@ -1004,7 +1010,7 @@ class AlarmManager extends React.PureComponent {
         );
     }
 
-    // 在外部更改启用状态 
+    // 在外部更改启用状态
     handleEnabledOuterChange = (checked, row, index) => {
         const newData = [...this.state.tableData];
         const selectRowRecord = {
@@ -1028,14 +1034,25 @@ class AlarmManager extends React.PureComponent {
                 propLable: record.propLable,//属性分类
                 propName: record.propName,//属性名称
                 // objTypeName: record.objLabelName,//对象分类
-                objName: record.objName,//对象名称
+                objName: record.objName,//对象实例
             }
         })
     }
 
-    setClassName = (record, index) => {//record代表表格行的内容，index代表行索引
+    setClassName = (key, record, index) => {//record代表表格行的内容，index代表行索引
         //判断索引相等时添加行的高亮样式
         return index === this.state.activeRowIndex ? 'l-table-row-active' : "";
+    }
+    handleOuterEditRowItem = (key, e, record, index) => {
+        const newData = [...this.state.tableData];
+        const selectRowRecord = {
+            ...record,
+            [key]: e.target.value
+        }
+        newData.splice(index, 1, selectRowRecord)
+        this.setState({
+            tableData: newData,
+        })
     }
     render() {
         const {
@@ -1112,7 +1129,7 @@ class AlarmManager extends React.PureComponent {
                 render: text => <span title={text}>{text}</span>,
             },
             {
-                title: '对象名称',
+                title: '对象实例',
                 dataIndex: 'objShowName',
                 key: 'objShowName',
                 width: '5%',
@@ -1136,50 +1153,53 @@ class AlarmManager extends React.PureComponent {
                 title: '报警分类',
                 dataIndex: 'objLabelShowName',
                 key: 'objLabelShowName',
-                width: '5%',
-                render: text => <span title={text}>{text}</span>,
+                width: '10%',
+                render: (text, recrod, index) => <Input value={text} onBlur={() => this.handleOuterAlarmInfoComfirm(recrod)} onChange={(e) => this.handleOuterEditRowItem('typeName', e, recrod, index)} />,
             },
             {
                 title: '报警名称',
                 dataIndex: 'alarmName',
                 key: 'alarmName',
                 width: '8%',
-                render: text => <span title={text}>{text}</span>,
+                // render: text => <span title={text}>{text}</span>,
+                render: (text, recrod, index) => <Input value={text} onBlur={() => this.handleOuterAlarmInfoComfirm(recrod)} onChange={(e) => this.handleOuterEditRowItem('alarmName', e, recrod, index)} />,
             },
             {
                 title: '报警描述',
                 dataIndex: 'description',
                 key: 'description',
                 width: '12%',
-                render: text => <span title={text}>{text}</span>,
+                // render: text => <span title={text}>{text}</span>,
+                render: (text, recrod, index) => <Input value={text} onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }} onBlur={() => { console.log('报警描述'); this.handleOuterAlarmInfoComfirm(recrod) }} onChange={(e) => this.handleOuterEditRowItem('description', e, recrod, index)} />,
             },
             {
                 title: '报警等级',
                 dataIndex: 'priority',
                 key: 'priority',
                 width: '5%',
-                render: text => <span title={text}>{text}</span>,
+                render: (text, recrod, index) => <Select value={text} onBlur={() => this.handleOuterAlarmInfoComfirm(recrod)} onChange={(value) => this.handleOuterEditRowItem('priority', { target: { value } }, recrod, index)}>{[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(l => <Select.Option key={l} value={l}>{l}</Select.Option>)}</Select>,
             },
             {
                 title: '触发条件',
                 dataIndex: 'triggerCondition',
                 key: 'triggerCondition',
                 width: '6%',
-                render: text => <span title={text}>{text}</span>,
+                render: (text, recrod, index) => <span title={text}>{text}</span>,
             },
             {
                 title: '推送频率（分钟）',
                 dataIndex: 'duration',
                 key: 'duration',
                 width: '6%',
-                render: text => <span title={text}>{text}</span>,
+                // render: text => <span title={text}>{text}</span>,
+                render: (text, recrod, index) => <Input value={text} onBlur={() => this.handleOuterAlarmInfoComfirm(recrod)} onChange={(e) => this.handleOuterEditRowItem('duration', e, recrod, index)} />,
             },
             {
                 title: '是否启用',
                 dataIndex: 'enabled',
                 key: 'enabled',
                 width: '5%',
-                render: (text, record, index) => <Checkbox checked={text} onChange={(e) => this.handleEnabledOuterChange(e.target.checked, record, index)} />,
+                render: (text, record, index) => <Checkbox checked={text} onClick={(e) => e.stopPropagation()} onChange={(e) => this.handleEnabledOuterChange(e.target.checked, record, index)} />,
             },
             {
                 title: '推送关联',
@@ -1236,7 +1256,6 @@ class AlarmManager extends React.PureComponent {
                 },
             },
         ];
-
         return (
             <div className="alarm">
                 {/* 新增、编辑弹框 */}
@@ -1331,7 +1350,7 @@ class AlarmManager extends React.PureComponent {
                                 labelAlign="left"
                             >
                                 {getFieldDecorator('propName', {
-                                    initialValue: selectRowRecord.propName,
+                                    initialValue: selectRowRecord.propLabelShowName,
                                     rules: [
                                         {
                                             required: true,
@@ -1361,7 +1380,7 @@ class AlarmManager extends React.PureComponent {
                                 labelAlign="left"
                             >
                                 {getFieldDecorator('propName', {
-                                    initialValue: selectRowRecord.propName,
+                                    initialValue: selectRowRecord.propShowName,
                                     rules: [
                                         {
                                             required: true,
@@ -1668,7 +1687,7 @@ class AlarmManager extends React.PureComponent {
                             notFoundContent={null}
                             defaultActiveFirstOption={false}
                             // value={queryObjName}
-                            style={{ width: '200px' }}
+                            style={{ width: '100px' }}
                             onDropdownVisibleChange={visible => {
                                 if (visible) {
                                     this.getObjNameList('', listData => {
@@ -1696,7 +1715,7 @@ class AlarmManager extends React.PureComponent {
                             notFoundContent={null}
                             defaultActiveFirstOption={false}
                             value={queryObjName}
-                            style={{ width: '200px' }}
+                            style={{ width: '100px' }}
                             onDropdownVisibleChange={visible => {
                                 if (visible) {
                                     this.getObjNameList('', listData => {
@@ -1751,7 +1770,7 @@ class AlarmManager extends React.PureComponent {
                                 }
                             }}
                             onChange={this.handleQueryPropNameChange}
-                            style={{ width: '200px' }}
+                            style={{ width: '100px' }}
                         >
                             <Select.Option key="全部">
                                 全选
@@ -1774,12 +1793,62 @@ class AlarmManager extends React.PureComponent {
                                     }
                                 )
                             }}
-                            style={{ width: '200px', position: 'absolute', 'margin-left': '10px' }}
+                            style={{ width: '100px', position: 'absolute', 'margin-left': '10px' }}
                         />
-                        <Switch
-                            style={{ 'margin-left': '220px' }}
-                            checkedChildren="已设置"
-                            unCheckedChildren="未设置" defaultChecked />
+
+                        <span style={{ 'margin-left': '120px' }} className="mailqueryByName">站内信用户:</span>
+                        <Input
+                            placeholder="请输入用户信息"
+                            onBlur={(e) => {
+                                this.handleSearchParamsChange()
+                            }}
+                            onChange={(e) => {
+                                const nextValue = e.target.value;
+                                console.log(nextValue)
+                                this.setState(
+                                    {
+                                        mailqueryByName: nextValue
+                                    }
+                                )
+                            }}
+                            style={{ width: '100px', position: 'absolute', 'margin-left': '10px' }}
+                        />
+
+                        <span style={{ 'margin-left': '120px' }} className="mailqueryByName">钉钉群用户:</span>
+                        <Input
+                            placeholder="请输入钉钉群"
+                            onBlur={(e) => {
+                                this.handleSearchParamsChange()
+                            }}
+                            onChange={(e) => {
+                                const nextValue = e.target.value;
+                                console.log(nextValue)
+                                this.setState(
+                                    {
+                                        dingdingGroup: nextValue
+                                    }
+                                )
+                            }}
+                            style={{ width: '100px', position: 'absolute', 'margin-left': '10px' }}
+                        />
+
+                        <span style={{ 'margin-left': '120px' }} className="mailqueryByName">钉钉用户:</span>
+                        <Input
+                            placeholder="请输入钉钉用户"
+                            onBlur={(e) => {
+                                this.handleSearchParamsChange()
+                            }}
+                            onChange={(e) => {
+                                const nextValue = e.target.value;
+                                console.log(nextValue)
+                                this.setState(
+                                    {
+                                        dingdingUser: nextValue
+                                    }
+                                )
+                            }}
+                            style={{ width: '100px', position: 'absolute', 'margin-left': '10px' }}
+                        />
 
 
                         {/*<span style={{'margin-left': '10px'}}  className="propLabel">对象标签:</span>*/}
@@ -1814,7 +1883,7 @@ class AlarmManager extends React.PureComponent {
                             className="alarmType">报警分类:</span>
                         <Select
                             value={typeName}
-                            style={{ width: '200px', 'margin-left': '10px' }}
+                            style={{ width: '100px', 'margin-left': '10px' }}
                             onChange={this.handleQueryAlarmTypeChange}
                         >
                             <Select.Option key="请选择:请选择">
@@ -1838,13 +1907,13 @@ class AlarmManager extends React.PureComponent {
                                     }
                                 )
                             }}
-                            style={{ width: '200px', position: 'absolute', 'margin-left': '10px' }}
+                            style={{ width: '100px', position: 'absolute', 'margin-left': '10px' }}
                         />
 
-                        <span style={{ 'margin-left': '220px' }} className="alarmProp">报警等级:</span>
+                        <span style={{ 'margin-left': '120px' }} className="alarmProp">报警等级:</span>
                         <Select
                             value={level}
-                            style={{ width: '200px' }}
+                            style={{ width: '100px' }}
                             onChange={this.handleQueryLevelChange}
                         >
                             <Option value={0}>请选择</Option>
@@ -1876,10 +1945,14 @@ class AlarmManager extends React.PureComponent {
                                     }
                                 )
                             }}
-                            style={{ width: '200px', position: 'absolute', 'margin-left': '10px' }}
+                            style={{ width: '100px', position: 'absolute', 'margin-left': '10px' }}
                         />
+                        <Switch
+                            style={{ 'margin-left': '120px' }}
+                            checkedChildren="已设置"
+                            unCheckedChildren="未设置" defaultChecked />
                         <Button
-                            style={{ 'margin-left': '220px' }}
+                            style={{ 'margin-left': '10px' }}
                             className="addButton"
                             type="primary"
                             onClick={() => this.handleAlarmInfoModalOpen(true, this.state.selectRowRecord)}
@@ -1911,12 +1984,12 @@ class AlarmManager extends React.PureComponent {
                 </Row>
                 <div style={{ 'margin-top': '10px' }} className="alarmTable">
                     <Table
-                        onRow={(record, index) => {
-                            return {
-                                onClick: event => this.handleRowClick(record, index), // 点击行
-                            };
-                        }}
-                        rowClassName={this.setClassName}
+                        // onRow={(record, index) => {
+                        //     return {
+                        //         onClick: event => this.handleRowClick(record, index), // 点击行
+                        //     };
+                        // }}
+                        // rowClassName={this.setClassName}
                         loading={tableLoading}
                         columns={columns}
                         dataSource={tableData}
