@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { Button, DatePicker, Select, Table, Input, Spin, Form, message, Row, Col } from 'antd';
+import { Button, DatePicker, Select, Table, Input, Popconfirm, Form, message, Row, Col, Spin, TimePicker } from 'antd';
 import moment from 'moment';
 var css = document.createElement('style');
 css.type = 'text/css';
@@ -39,19 +39,25 @@ css.innerHTML = `
     .ant-select-selection {
       border:none
     }
-    input::-webkit-outer-spin-button,
-    input::-webkit-inner-spin-button {
-        -webkit-appearance: none;
+    .ant-time-picker-input {
+        border:none !important
+    }
+    .ant-time-picker-icon {
+        right: 18px !important;
     }
     #appPreviewWrapper .ant-spin-container {
         overflow: visible !important;
     }
     `;
 document.getElementsByTagName('head')[0].appendChild(css);
-const EditableContext = React.createContext();
 
-const Factory = '制造一';
-const Type = '原料磨';
+const m2m = (time) => {
+    const h = moment.duration(time, "minutes").asHours();
+    const m = moment.duration(time, "minutes").minutes();
+    return moment(`${h}:${m}`, 'HH:mm')
+}
+
+const EditableContext = React.createContext();
 
 const EditableRow = ({ form, index, ...props }) => (
     <EditableContext.Provider value={form}>
@@ -64,6 +70,7 @@ class EditableCell extends React.Component {
         editing: false,
     };
     toggleEdit = (record, id, dataIndex, e) => {
+        console.log(record, id, dataIndex, e)
         e && e.stopPropagation();
         if (record.block) return false;
         const editing = !this.state.editing;
@@ -71,11 +78,12 @@ class EditableCell extends React.Component {
             if (editing) {
                 // ht的mousedown事件会触发react的onblur事件 需要阻止事件冒泡
                 if (id) {
+                    console.log(id);
                     document.querySelector(`#${id}`).addEventListener('mousedown', (e) => {
                         e.stopPropagation();
                     }, false)
                 }
-                if (dataIndex === 'OutPut') {
+                if (dataIndex === 'CL') {
                     this.input.focus();
                 }
                 if (dataIndex === 'type') {
@@ -98,20 +106,19 @@ class EditableCell extends React.Component {
 
     renderCell = form => {
         this.form = form;
-        const { children, dataIndex, record } = this.props;
+        const { children, dataIndex, record, title, typeData } = this.props;
         const { editing } = this.state;
         return editing ? (
             <Form.Item style={{ margin: 0 }}>
                 {form.getFieldDecorator(`${dataIndex}-${record.id}`, {
                     rules: [
                         {
-                            pattern: /^-?[1-9]\d*(\.\d{1,2})?$|^0+(\.\d{1,2})?$/,
+                            pattern: /^[1-9]\d*(\.\d{1,2})?$|^0+(\.\d{1,2})?$/,
                             message: '数字不合法',
                         },
                     ],
                     initialValue: record[dataIndex],
                 })(<Input
-                    type='number'
                     ref={node => (this.input = node)}
                     onPressEnter={() => this.save(`${dataIndex}-${record.id}`)}
                     onBlur={() => this.save(`${dataIndex}-${record.id}`)}
@@ -154,7 +161,6 @@ class CustomComp extends Component {
     constructor(props) {
         super(props)
         this.state = {
-            visable: false,
             data: [],
             proDate: moment().format(dateFormat),
             team: "", // 班组
@@ -162,44 +168,52 @@ class CustomComp extends Component {
             typeData: [],
             crusher: [],
             currentCrusher: '',
-            submiting: false,
-            runTime: '',
-            remark: '',
+            visable: false,
+            submitType: 'insert',
+            runTime: moment('00：00', 'HH:mm'),
+            submitType: 'insert',
             message: '',
-            icon: ''
+            remark: ''
         };
         this.element = React.createRef()
     }
 
+    //   get teamOption() {
+    //     const arr = [];
+    //     if (moment(`${this.state.proDate} 08:00:00`, 'YYYY-MM-DD HH:mm:ss').valueOf() <= moment().valueOf()) {
+    //       arr.push({ key: '夜班', value: '夜班' })
+    //     }
+    //     if (moment(`${this.state.proDate} 16:00:00`, 'YYYY-MM-DD HH:mm:ss').valueOf() <= moment().valueOf()) {
+    //       arr.push({ key: '白班', value: '白班' })
+    //     }
+    //     if (moment(this.state.proDate, 'YYYY-MM-DD').endOf('day').valueOf() <= moment().valueOf()) {
+    //       arr.push({ key: '中班', value: '中班' })
+    //     }
+    //     if (!arr.length) {
+    //       arr.push({ key: 'null', value: '暂无班组查询' })
+    //     }
+    //     return arr;
+    //   }
     get teamOption() {
         const arr = [];
-        if (moment(`${this.state.proDate} 08:00:00`, 'YYYY-MM-DD HH:mm:ss').valueOf() <= moment().valueOf()) {
-            arr.push({ key: '夜班', value: '夜班' })
-        }
-        if (moment(`${this.state.proDate} 16:00:00`, 'YYYY-MM-DD HH:mm:ss').valueOf() <= moment().valueOf()) {
-            arr.push({ key: '白班', value: '白班' })
-        }
-        if (moment(this.state.proDate, 'YYYY-MM-DD').endOf('day').valueOf() <= moment().valueOf()) {
-            arr.push({ key: '中班', value: '中班' })
-        }
-        if (!arr.length) {
-            arr.push({ key: 'null', value: '暂无班组查询' })
-        }
+        arr.push({ key: '夜班', value: '夜班' })
+        arr.push({ key: '白班', value: '白班' })
+        arr.push({ key: '中班', value: '中班' })
         return arr;
     }
     columns = [
         {
-            title: '设备',
-            key: 'DeviceName',
+            title: '堆场',
+            key: 'MineStockName',
             align: 'center',
-            dataIndex: 'DeviceName',
+            dataIndex: 'MineStockName',
             render: (text, row,) => {
                 const obj = {
                     children: text,
                     props: {},
                 }
                 const { data } = this.state;
-                const lime = data.filter(item => item.DeviceName === row.DeviceName);
+                const lime = data.filter(item => item.MineStockName === row.MineStockName);
                 if (row.id === lime[0].id) {
                     obj.props.rowSpan = lime.length
                 } else {
@@ -209,21 +223,20 @@ class CustomComp extends Component {
             },
         },
         {
-            title: '原材料',
-            key: 'Raw',
+            title: '产品',
+            key: 'produce',
             align: 'center',
-            dataIndex: 'Raw',
+            dataIndex: 'produce',
         },
         {
-            title: '消耗量（吨）',
-            key: 'OutPut',
+            title: '产量',
+            key: 'CL',
             align: 'center',
-            dataIndex: 'OutPut',
-            render: text => <p style={{ textAlign: 'center', fontSize: '14px', height: '32px', lineHeight: '32px', padding: 0, margin: 0 }}>{text}</p>,
+            dataIndex: 'CL',
             onCell: record => ({
                 record,
                 editable: true,
-                dataIndex: 'OutPut',
+                dataIndex: 'CL',
                 title: '产量',
                 handleSave: this.handleSave,
             })
@@ -264,8 +277,8 @@ class CustomComp extends Component {
         new Promise((resolve) => {
             scriptUtil.excuteScriptService({
                 objName: "SCGL",
-                serviceName: "GetDevice",
-                params: { Factory, Type },
+                serviceName: "getarCrusher",
+                params: {},
                 cb: (res) => {
                     this.setState({
                         crusher: res.result.list,
@@ -302,21 +315,19 @@ class CustomComp extends Component {
 
     rowMount = (data) => {
         if (!data.length) return [];
-        const mount = data.reduce((mount, item) => { mount += Number(item.OutPut); return mount }, 0)
-        return data.concat({ DeviceName: '合计', block: true, OutPut: mount })
+        const mount = data.reduce((mount, item) => { mount += Number(item.CL); return mount }, 0)
+        return data.concat({ MineStockName: '合计', block: true, CL: mount })
     }
-
-
     getRunTime = () => {
         let { proDate, team, currentCrusher } = this.state;
 
         scriptUtil.excuteScriptService({
             objName: "SCGL",
-            serviceName: "GetDeviceRunningTime",
+            serviceName: "GetCrusherRunningTime",
             params: {
-                prodate: proDate,
-                DeviceId: currentCrusher,
-                team
+                day: proDate,
+                crush: currentCrusher,
+                shift: team
             },
             cb: (res) => {
                 this.setState({
@@ -339,143 +350,227 @@ class CustomComp extends Component {
         })
         scriptUtil.excuteScriptService({
             objName: "SCGL",
-            serviceName: "GetDeviceReport",
+            serviceName: "GetDiggReport",
             params: {
-                ProDate: proDate,
-                Device: currentCrusher,
-                Team: team,
+                day: proDate,
+                crush: currentCrusher,
+                shift: team,
             },
             cb: (res) => {
                 if (res.result.list.length === 0) {
                     this.getRunTime();
                     scriptUtil.excuteScriptService({
                         objName: "SCGL",
-                        serviceName: "GetProduceOutPut",
+                        serviceName: "GetDiggData",
                         params: {
                             day: proDate,
-                            Deviceid: currentCrusher,
-                            Team: team,
+                            crush: currentCrusher,
+                            shift: team,
+                            type: "骨料"
                         },
                         cb: (res) => {
-
-                            if (!res.result) { return false; }
                             this.setState({
                                 submitType: 'insert',
                                 data: this.rowMount(res.result.list),
-                                remark: ''
+                                remark: '',
+                                message: '',
                             })
                         }
                     });
                 } else {
-                    if (!res.result) { return false; }
+                    if (!res || !res.result || !res.result.list[0]) return false;
+                    const item = res.result.list[0];
                     this.setState({
                         submitType: 'update',
                         data: this.rowMount(res.result.list),
-                        remark: res.result.list[0].Remark,
-                        runTime: res.result.list[0].RunningTime
+                        remark: item.remark,
+                        runTime: m2m(item.duration),
+                        visable: false,
+                        message: '',
                     })
                 }
-                this.setState({
-                    visable: false,
-                    message: '',
-                })
             }
         });
     }
-    handleSaveSubmit = () => {
-        let { data } = this.state;
-
-        scriptUtil.excuteScriptService({
-            objName: 'DeviceReport',
-            serviceName: 'AddDataTableEntries',
-            params: {
-                params: JSON.stringify({
-                    list: data.slice(0, -1).map(item => ({
-                        DeviceId: this.state.currentCrusher,
-                        team: this.state.team,
-                        ProDate: this.state.proDate,
-                        RunningTime: Number(this.state.runTime),
-                        Remark: this.state.remark,
-                        Creator: this.state.staffName,
-                        CreatTime: moment().format('YYYY-MM-DD HH:mm:ss'),
-                        Raw: item.Raw,
-                        Expent: Number(item.OutPut)
-                    }))
-                })
-            },
-            cb: (res) => {
-                message.success('保存成功');
+    submit = () => {
+        const { proDate, team, currentCrusher } = this.state;
+        this.setState({
+            visable: true,
+        })
+        new Promise((resolve, reject) => {
+            scriptUtil.excuteScriptService({
+                objName: "SCGL",
+                serviceName: "GetDiggReport",
+                params: {
+                    day: proDate,
+                    crush: currentCrusher,
+                    shift: team,
+                },
+                cb: (res) => {
+                    if (!res.result) {
+                        reject(false)
+                    } else {
+                        resolve(res.result);
+                    }
+                }
+            })
+        }).then(res => {
+            if (res.list && res.list.length === 0) {
                 this.setState({
-                    visable: false
+                    message: '保存中。。。',
                 })
-                return res.result;
+                return this.handleSaveSubmit()
+            } else {
+                this.setState({
+                    message: '修改中。。。',
+                })
+                return this.handleEditSubmit()
             }
-        });
+        }).then(() => {
+            // 更新保存状态
+            const jsonData = {
+                'update': {
+                    Confirm_flag: 1
+                },
+                'where': {
+                    prodate: this.state.proDate,
+                    team: this.state.team,
+                    Content: this.state.currentCrusher,
+                    type: '破碎机'
+                }
+            };
+            scriptUtil.excuteScriptService({
+                objName: "ConfirmationInfo",
+                serviceName: "UpdateDataTableEntry",
+                params: {
+                    updateData: JSON.stringify(jsonData)
+                },
+                cb: () => { }
+            });
+        })
+    }
+    handleSaveSubmit = () => {
+        let { data,runTime } = this.state;
+        return new Promise((resolve, reject) => {
+            scriptUtil.excuteScriptService({
+                objName: 'crusherreport',
+                serviceName: 'AddDataTableEntries',
+                params: {
+                    params: JSON.stringify({
+                        list: data.slice(0, -1).map(item => ({
+                            produce: item.produce,
+                            yard: item.MineStockName,
+                            CL: Number(item.CL),
+                            stack: item.name,
+                            lime: item.objName,
+                            type: item.type,
+                            prodate: this.state.proDate,
+                            team: this.state.team,
+                            creator: this.state.staffName,
+                            crusherid: this.state.currentCrusher,
+                            duration: m2m(runTime),
+                            creattime: moment().format('YYYY-MM-DD HH:mm:ss'),
+                            remark: this.state.remark
+                        }))
+                    })
+                },
+                cb: (res) => {
+                    if (!res.result || res.result !== (data.length - 1)) {
+                        message.error('保存失败');
+                        this.setState({
+                            submitType: 'insert',
+                            visable: false,
+                            message: ''
+                        })
+                    } else {
+                        message.success('保存成功');
+                        scriptUtil.excuteScriptService({
+                            objName: "SCGL",
+                            serviceName: "GetDiggReport",
+                            params: {
+                                day: proDate,
+                                crush: currentCrusher,
+                                shift: team,
+                            },
+                            cb: (res) => {
+                                if (!res || !res.result || !res.result.list[0]) return false;
+                                const item = res.result.list[0];
+                                this.setState({
+                                    data: this.rowMount(res.result.list),
+                                    remark: item.remark,
+                                    runTime: m2m(item.duration),
+                                    submitType: 'update',
+                                    visable: false,
+                                    message: ''
+                                })
+                            }
+                        })
+                    }
+                    resolve(res.result)
+                }
+            });
+        })
 
     }
     handleEditSubmit = () => {
-        const { data } = this.state;
-        this.setState({
-            submiting: true
-        })
-        const promiseData = data.slice(0, -1).map(item => new Promise((resolve, reject) => {
+        const { data, runTime } = this.state;
+        const promiseData = data.slice(0, -1).map(item => new Promise((resolve) => {
             const jsonData = {
                 update: {
-                    Expent: Number(item.OutPut),
+                    CL: Number(item.CL),
                 },
                 where: {
                     id: item.id
                 }
             };
             scriptUtil.excuteScriptService({
-                objName: "DeviceReport",
+                objName: "crusherreport",
                 serviceName: "UpdateDataTableEntry",
                 params: {
                     updateData: JSON.stringify(jsonData)
                 },
                 cb: (res) => {
-                    if (!res.result) {
-                        reject(res);
+                    if (res.result == 1) {
+                        resolve(true)
                     } else {
-                        resolve(res.result);
+                        reject(false);
                     }
-                    return res.result;
                 }
             });
         })).concat(new Promise(resolve => {
             scriptUtil.excuteScriptService({
-                objName: "DeviceReport",
+                objName: "crusherreport",
                 serviceName: "UpdateDataTableEntry",
                 params: {
                     updateData: JSON.stringify({
                         update: {
-                            Remark: this.state.remark,
-                            RunningTime: Number(this.state.runTime),
+                            remark: this.state.remark,
+                            duration: Number(runTime.hours() * 60) + Number(runTime.minutes()),
                         },
                         where: {
-                            DeviceId: this.state.currentCrusher,
-                            ProDate: this.state.proDate,
+                            crusherid: this.state.currentCrusher,
+                            prodate: this.state.proDate,
                             team: this.state.team,
                         }
                     })
                 },
                 cb: (res) => {
-                    if (!res.result) {
-                        reject(res);
+                    if (res && (res.result == (data.length - 1))) {
+                        resolve(true)
                     } else {
-                        resolve(res.result);
+                        reject(false);
                     }
-                    return res.result;
                 }
             });
         }))
         Promise.all(promiseData).then(res => {
             message.success('修改成功')
-        }).catch(()=>{
+        }).catch(err => {
             message.error('修改失败')
-        }).then(()=>{
+        }).then(() => {
             this.setState({
-                visable: false
+                visable: false,
+                message: '',
             })
         })
     }
@@ -484,34 +579,14 @@ class CustomComp extends Component {
             remark: e.target.value
         })
     }
-    disabledDate = (current) => current && current > moment().endOf('day');
-
-    submit = () => {
-        const { proDate, team, currentCrusher } = this.state;
+    runTimeChange = (runTime, timeStr) => {
         this.setState({
-            visable: true,
-            message: '提交中...'
+            runTime
         })
-        scriptUtil.excuteScriptService({
-            objName: "SCGL",
-            serviceName: "GetDeviceReport",
-            params: {
-                ProDate: proDate,
-                Device: currentCrusher,
-                Team: team,
-            },
-            cb: (res) => {
-                if (res.result.list.length === 0) {
-                    this.handleSaveSubmit()
-                } else {
-                    this.handleEditSubmit()
-                }
-            }
-        });
     }
-
+    disabledDate = (current) => current && current > moment().endOf('day');
     render() {
-        const { proDate, team, data, currentCrusher, runTime, remark, message, visable, submitType } = this.state;
+        const { proDate, team, data, currentCrusher, runTime, remark, message, submitType, visable } = this.state;
         const components = {
             body: {
                 row: EditableFormRow,
@@ -528,7 +603,7 @@ class CustomComp extends Component {
                             </Col>
                             <Col span={7} style={borderTopRight}>
                                 <DatePicker
-                                    disabledDate={this.disabledDate}
+                                    //disabledDate={this.disabledDate}
                                     style={datePickerStyle}
                                     onChange={(D, dateString) => this.onSerchKeyChange('proDate', dateString)}
                                     defaultValue={moment(proDate)}
@@ -566,7 +641,8 @@ class CustomComp extends Component {
                                 <label style={headerLabel}>运行时长：</label>
                             </Col>
                             <Col span={7} style={Object.assign({}, borderTopRight, rightBorderNone)}>
-                                <Input value={runTime} onChange={(e) => this.setState({ runTime: e.target.value })} />
+                                {/* <Input value={runTime} onChange={(e) => this.setState({ runTime: e.target.value })} /> */}
+                                <TimePicker value={runTime} format={'HH:mm'} onChange={this.runTimeChange} />
                             </Col>
                         </Row>
                     </div>
@@ -584,7 +660,10 @@ class CustomComp extends Component {
                     </div>
                     <Button
                         style={submitButton}
-                        onClick={this.submit}
+                        type='submit'
+                        onClick={() => {
+                            this.submit()
+                        }}
                     >{submitType === 'insert' ? '保存' : '修改'}</Button>
                 </div >
             </Spin>

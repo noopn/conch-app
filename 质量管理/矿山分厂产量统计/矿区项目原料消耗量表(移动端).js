@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { Button, DatePicker, Select, Table, Input, Row, Col, Form, message } from 'antd';
+import { Button, DatePicker, Select, Table, Input, Row, Col, Form, message, Spin } from 'antd';
 import moment from 'moment';
 var css = document.createElement('style');
 css.type = 'text/css';
@@ -39,7 +39,11 @@ css.innerHTML = `
 }
 .ant-select-selection {
   border:none
-}`;
+}
+#appPreviewWrapper .ant-spin-container {
+    overflow: visible !important;
+}
+`;
 document.getElementsByTagName('head')[0].appendChild(css);
 const EditableContext = React.createContext();
 
@@ -52,6 +56,7 @@ const EditableRow = ({ form, index, ...props }) => (
 const EditableFormRow = Form.create()(EditableRow);
 
 class EditableCell extends React.Component {
+
     state = {
         editing: false,
     };
@@ -139,36 +144,34 @@ class CustomComp extends Component {
         digg: '',
         userInfo: {},
         submiting: false,
-        diggs: []
+        diggs: [],
+        visable: false,
+        message: ''
     }
     keyMap = {
         "Diggings": "矿区",
-        "Platform": "平台",
-        "BPL": "日常爆破量",
-        "ZCL": "转场量",
-        "XLL": "下料量",
+        // "Platform": "平台",
+        "Item": "项目",
+        "Consumption": "原料消耗量",
+
     }
     filterMap = {
         // "Platform": "平台",
-        "BPL": "日常爆破量",
-        "ZCL": "转场量",
-        "XLL": "下料量",
+        // "Item": "项目",
+        "Consumption": "原料消耗量",
     }
     columns = [
         {
             key: 'Diggings',
         },
+        // {
+        //     key: 'Platform',
+        // },
         {
-            key: 'Platform',
+            key: 'Item',
         },
         {
-            key: 'BPL',
-        },
-        {
-            key: 'ZCL',
-        },
-        {
-            key: 'XLL',
+            key: 'Consumption',
         }
     ];
     handleColumns = (columns) => {
@@ -222,8 +225,6 @@ class CustomComp extends Component {
         });
         this.setState({ data: newData });
     };
-
-
     componentDidMount() {
         document.getElementById('runtimePage') && (document.getElementById('runtimePage').children[0].style.display = 'none')
         this.fetchDigg()
@@ -285,76 +286,43 @@ class CustomComp extends Component {
     }
     fetchData = () => {
         let { proDate, digg } = this.state;
-
+        this.setState({
+            visable: true,
+            message: '加载中。。。',
+        })
         scriptUtil.excuteScriptService({
             objName: "SCGL",
-            serviceName: "GetPlatformByDate",
+            serviceName: "GetPlatformByDate1",
             params: {
                 day: proDate, digg
             },
             cb: (res) => {
                 this.staticProDate = res.result.length ? res.result[0].ProDate : '';
                 this.setState({
-                    data: res.result,
+                    data: res.result.list,
+                    visable: false,
+                    message: ''
                 })
             }
         });
     }
 
     handleEditSubmit = () => {
-        const { data, digg } = this.state;
+        const { data } = this.state;
         if (!data.length) return false;
         this.setState({
-            submiting: true
+            visable: true,
+            message: '保存中。。。',
         })
-        if (digg !== '官山') {
-            scriptUtil.excuteScriptService({
-                objName: "PlatformExploitationReport",
-                serviceName: "UpdateDataTableEntry",
-                params: {
-                    updateData: JSON.stringify({
-                        'update': {
-                            XLL: Math.round((data.reduce((val, item) => { val += Number(item.XLL); return val }, 0) * 0.06)) + '',
-                            Createtime: moment().format("YYYY-MM-DD HH:mm:ss"),
-                            Creator: this.state.staffName,
-                        },
-                        'where': {
-                            Diggings: digg,
-                            ProDate: this.staticProDate,
-                            Platform: '夹石',
-                        }
-                    })
-                },
-                cb() { }
-            });
-            scriptUtil.excuteScriptService({
-                objName: "PlatformExploitationReport",
-                serviceName: "UpdateDataTableEntry",
-                params: {
-                    updateData: JSON.stringify({
-                        'update': {
-                            XLL: Math.round((data.reduce((val, item) => { val += Number(item.XLL); return val }, 0) * 0.07)) + '',
-                            CreateTime: moment().format("YYYY-MM-DD HH:mm:ss"),
-                            Creator: this.state.staffName,
-                        },
-                        'where': {
-                            Diggings: digg,
-                            ProDate: this.staticProDate,
-                            Platform: '剥离物',
-                        }
-                    })
-                },
-                cb() { }
-            });
-        }
-        const promiseData = data.map(item => new Promise((resolve) => {
+        const promiseData = data.map(item => new Promise((resolve, reject) => {
+            var val = item.Consumption;
+            if (item.Item === '领取柴油(吨)') {
+                val = (val * 1000 / 0.84).toFixed(2);
+            }
             const jsonData = {
                 'update': {
-                    Platform: item.Platform,
-                    BPL: item.BPL,
-                    ZCL: item.ZCL,
-                    XLL: item.XLL,
-                    CreateTime: moment().format("YYYY-MM-DD HH:mm:ss"),
+                    Consumption: val,
+                    Createtime: moment().format("YYYY-MM-DD HH:mm:ss"),
                     Creator: this.state.staffName,
                 },
                 'where': {
@@ -362,25 +330,56 @@ class CustomComp extends Component {
                 }
             };
             scriptUtil.excuteScriptService({
-                objName: "PlatformExploitationReport",
+                objName: "PlatformConsumptionReport",
                 serviceName: "UpdateDataTableEntry",
                 params: {
                     updateData: JSON.stringify(jsonData)
                 },
                 cb: (res) => {
-                    resolve(res.result)
+                    if (res.result == 1) {
+                        resolve(true)
+                    } else {
+                        reject(false);
+                    }
                 }
             });
         }))
         Promise.all(promiseData).then(res => {
             this.setState({
-                submiting: false
+                visable: false,
+                message: '',
             })
+            const jsonData = {
+                'update': {
+                    Confirm_flag:1
+                },
+                'where': {
+                    prodate: this.state.proDate,
+                    team:'天',
+                    Content:this.state.digg,
+                    type:'原料消耗'
+                }
+            };
             message.success('保存成功');
+            // 更新保存状态
+            scriptUtil.excuteScriptService({
+                objName: "ConfirmationInfo",
+                serviceName: "UpdateDataTableEntry",
+                params: {
+                    updateData: JSON.stringify(jsonData)
+                },
+                cb: ()=>{}
+            });
+        }).catch(err => {
+            this.setState({
+                visable: false,
+                message: '',
+            })
+            message.error('保存失败');
         })
     }
     render() {
-        const { proDate, digg, data, diggs } = this.state;
+        const { proDate, digg, data, diggs, visable, message } = this.state;
         const components = {
             body: {
                 row: EditableFormRow,
@@ -389,60 +388,59 @@ class CustomComp extends Component {
         };
         this.columns = this.handleColumns(this.columns);
         return (
-            <div style={containerWrapper} ref={this.element}>
-                <div style={serchHeader}>
-                    <Row>
-                        <Col span={5} style={borderTopRight}>
-                            <label style={headerLabel}>日期：</label>
-                        </Col>
-                        <Col span={7} style={borderTopRight}>
-                            <DatePicker
-                                onChange={(D, dateString) => this.onSerchKeyChange('proDate', dateString)}
-                                defaultValue={moment(proDate)}
-                                suffixIcon={() => null}
-                            >
-                            </DatePicker>
-                        </Col>
-                        <Col span={5} style={borderTopRight}>
-                            <label style={headerLabel}>矿区：</label>
-                        </Col>
-                        <Col span={7} style={Object.assign({}, borderTopRight, rightBorderNone)}>
-                            <div ref={this.select}>
-                                <Select
-                                    style={selectStyle}
-                                    value={digg}
-                                    onChange={(value, e) => this.onSerchKeyChange('digg', value)}
+            <Spin tip={message} spinning={visable}>
+                <div style={containerWrapper} ref={this.element}>
+                    <div style={serchHeader}>
+                        <Row>
+                            <Col span={5} style={borderTopRight}>
+                                <label style={headerLabel}>日期：</label>
+                            </Col>
+                            <Col span={7} style={borderTopRight}>
+                                <DatePicker
+                                    onChange={(D, dateString) => this.onSerchKeyChange('proDate', dateString)}
+                                    defaultValue={moment(proDate)}
+                                    suffixIcon={() => null}
                                 >
-                                    {
-                                        diggs.map(item => (
-                                            <Select.Option value={item.optionText}>{item.optionText}</Select.Option>
-                                        ))
-                                    }
-                                </Select>
-                            </div>
-                        </Col>
-                    </Row>
-                </div>
-                <div style={{ marginBottom: '40px' }}>
-                    <Table
-                        style={{ wordBreak: 'break-all' }}
-                        components={components}
-                        columns={this.columns}
-                        dataSource={data}
-                        pagination={false}
-                        bordered
-                    />
-                </div>
-                <Button
-                    style={submitButton}
-                    onClick={(e) => {
-                        e.preventDefault();
-                        if (this.state.submiting) return false;
-                        this.handleEditSubmit()
-                    }}
-                >保存
-                </Button>
-            </div >
+                                </DatePicker>
+                            </Col>
+                            <Col span={5} style={borderTopRight}>
+                                <label style={headerLabel}>矿区：</label>
+                            </Col>
+                            <Col span={7} style={Object.assign({}, borderTopRight, rightBorderNone)}>
+                                <div ref={this.select}>
+                                    <Select
+                                        style={selectStyle}
+                                        value={digg}
+                                        onChange={(value, e) => this.onSerchKeyChange('digg', value)}
+                                    >
+                                        {
+                                            diggs.map(item => (
+                                                <Select.Option value={item.optionText}>{item.optionText}</Select.Option>
+                                            ))
+                                        }
+                                    </Select>
+                                </div>
+                            </Col>
+                        </Row>
+                    </div>
+                    <div style={{ marginBottom: '40px' }}>
+                        <Table
+                            style={{ wordBreak: 'break-all' }}
+                            components={components}
+                            columns={this.columns}
+                            dataSource={data}
+                            pagination={false}
+                            bordered
+                        />
+                    </div>
+                    <Button
+                        style={submitButton}
+                        onClick={(e) => {
+                            this.handleEditSubmit()
+                        }}
+                    >保存</Button>
+                </div >
+            </Spin>
         );
     }
 }
@@ -489,4 +487,3 @@ const submitButton = {
     lineHeight: '40px',
     textAlign: 'center'
 }
-

@@ -232,57 +232,57 @@ css.innerHTML = `
         margin-right:6px;
         float:left
     }
-    .ant-select-selection {
+    .supos-comp-wrapper .ant-select-selection {
         background:#151D27 !important;
         border:1px solid #3A4A64 !important;
         color:#8F9BB3 !important;
     }
-   .ant-calendar-picker-input {
+    .supos-comp-wrapper .ant-calendar-picker-input {
         background:#151D27 !important;
         border:1px solid #3A4A64 !important;
         color:#8F9BB3 !important;
     }
-    .ant-calendar-picker-clear {
+    .supos-comp-wrapper .ant-calendar-picker-clear {
         // background: transparent !important;
     }
-    .ant-table thead.ant-table-thead > tr > th {
+    .supos-comp-wrapper .ant-table thead.ant-table-thead > tr > th {
         background:#2F3F59 !important;
         font-size:14px;
     }
-    .ant-table-bordered .ant-table-thead > tr > th {
+    .supos-comp-wrapper .ant-table-bordered .ant-table-thead > tr > th {
         border-right:none !important;
     }
-    .ant-table-bordered .ant-table-tbody > tr > td  {
+    .supos-comp-wrapper .ant-table-bordered .ant-table-tbody > tr > td  {
         border-right:1px solid #2F3F59 !important;
     }
-    .ant-table-bordered .ant-table-tbody > tr > td:last-child  {
+    .supos-comp-wrapper .ant-table-bordered .ant-table-tbody > tr > td:last-child  {
         border-right:none !important;
     }
-    .ant-table-bordered .ant-table-body > table {
+    .supos-comp-wrapper .ant-table-bordered .ant-table-body > table {
         border:none !important;
         color: #fff;
     }
-    .ant-table-thead > tr, .ant-table-tbody > tr:nth-child(even) {
+    .supos-comp-wrapper .ant-table-thead > tr, .ant-table-tbody > tr:nth-child(even) {
         background:#213451 !important;
     }
-    .ant-table-thead > tr, .ant-table-tbody > tr:nth-child(odd) {
+    .supos-comp-wrapper .ant-table-thead > tr, .ant-table-tbody > tr:nth-child(odd) {
         background:#1C2B43 !important;
     } 
-    .ant-pagination-prev .ant-pagination-item-link, .ant-pagination-next .ant-pagination-item-link {
+    .supos-comp-wrapper .ant-pagination-prev .ant-pagination-item-link, .ant-pagination-next .ant-pagination-item-link {
         background: #304362 !important;
         border: none !important;
     }
-    .ant-pagination-item {
+    .supos-comp-wrapper .ant-pagination-item {
         background:#304362 !important;
         border: none !important;
     }
-    .ant-pagination-item a {
+    .supos-comp-wrapper .ant-pagination-item a {
         color:#fff !important;
     }
-    .ant-pagination-item-active {
+    .supos-comp-wrapper .ant-pagination-item-active {
         background: #3377FF !important;
     }
-    .ant-pagination-item-active:hover {
+    .supos-comp-wrapper .ant-pagination-item-active:hover {
         border:#3377FF !important;
     }
     `;

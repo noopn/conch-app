@@ -43,7 +43,7 @@ css.innerHTML = `
     input::-webkit-inner-spin-button {
         -webkit-appearance: none;
     }
-    #appPreviewWrapper .ant-spin-container {
+    #htDiv-kenz60pc0-954 .ant-spin-nested-loading .ant-spin-container {
         overflow: visible !important;
     }
     `;
@@ -303,7 +303,7 @@ class CustomComp extends Component {
     rowMount = (data) => {
         if (!data.length) return [];
         const mount = data.reduce((mount, item) => { mount += Number(item.OutPut); return mount }, 0)
-        return data.concat({ DeviceName: '合计', block: true, OutPut: mount })
+        return data.concat({ Raw: '产量', block: true, OutPut: Math.round(mount*0.97) })
     }
 
 
@@ -536,22 +536,14 @@ class CustomComp extends Component {
                                 >
                                 </DatePicker>
                             </Col>
-                            <Col span={5} style={borderTopRight}>
-                                <label style={headerLabel}>班组：</label>
-                            </Col>
+                            
                             <Col span={7} style={Object.assign({}, borderTopRight, rightBorderNone)}>
-                                <Select
-                                    style={selectStyle}
-                                    value={team}
-                                    onChange={(value) => this.onSerchKeyChange('team', value)}
-                                >
-                                    {this.teamOption.map(item => <Select.Option value={item.key}>{item.value}</Select.Option>)}
-                                </Select>
+                               
                             </Col>
                         </Row>
                         <Row>
                             <Col span={5} style={borderTopRight}>
-                                <label style={headerLabel}>破碎机：</label>
+                                <label style={headerLabel}>设备：</label>
                             </Col>
                             <Col span={7} style={borderTopRight}>
                                 <Select
