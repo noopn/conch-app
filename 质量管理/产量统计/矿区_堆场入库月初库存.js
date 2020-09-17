@@ -318,7 +318,11 @@ class CustomComp extends Component {
                     updateData: JSON.stringify(jsonData)
                 },
                 cb: (res) => {
-                    resolve(res.result)
+                    if (res && (res.result == data.length)) {
+                        resolve(true);
+                    } else {
+                        reject(false);
+                    }
                 }
             });
         }))

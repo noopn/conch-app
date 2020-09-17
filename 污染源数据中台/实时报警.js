@@ -4,6 +4,7 @@ import moment from 'moment';
 const bg1 = '/resource/App_ef783424fcea438b82ea1eb40afa8e16/%E8%8F%9C%E5%8D%95%E8%83%8C%E6%99%AF1@2x.png'
 const bg2 = '/resource/App_ef783424fcea438b82ea1eb40afa8e16/%E8%8F%9C%E5%8D%95%E8%83%8C%E6%99%AF2.png'
 class CustomComp extends Component {
+    element = React.createRef();
     componentDidMount() {
         scriptUtil.excuteScriptService({
             objName: "parkFactoryInfo",
@@ -22,7 +23,7 @@ class CustomComp extends Component {
             params: {},
             cb: (res) => {
                 this.setState({
-                    factoryTypes: [{ optionValue: '', optionText: '全部' }].concat(res.result.list),
+                    factoryTypes: [{ optionValue: '', optionText: '企业类型' }].concat(res.result.list),
                 })
             }
         })
@@ -32,10 +33,22 @@ class CustomComp extends Component {
             params: {},
             cb: (res) => {
                 this.setState({
-                    areas: [{ optionValue: '', optionText: '全部' }].concat(res.result.list),
+                    areas: [{ optionValue: '', optionText: '地区' }].concat(res.result.list),
                 })
             }
+        });
+        [].slice.call(document.getElementsByClassName('draw_g6CsK')).forEach(item => {
+            item.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+            })
         })
+        // if (this.element && this.element.current) {
+        //     ["click"].forEach((event) => {
+        //         this.element.current.addEventListener(event, (e) => {
+        //             e.stopPropagation();
+        //         });
+        //     })
+        // }
     }
     state = {
         industrialArea: '南京化学工业园区',
@@ -75,7 +88,7 @@ class CustomComp extends Component {
             title: '报警时间',
             dataIndex: 'alarmTime',
             key: 'alarmTime',
-            render: (text) => moment(text).format('YYYY-MM-DD hh:mm:ss')
+            render: (text) => moment(text).format('YYYY-MM-DD HH:mm:ss')
         },
         {
             title: '报警等级',
@@ -94,6 +107,21 @@ class CustomComp extends Component {
                 areaName: area,
                 factoryName: factoryType
             },
+            cb: (res) => {
+                console.log(res);
+                this.setState({
+                    data: res.result.list,
+                    filterData: res.result.list
+                })
+            }
+        })
+    }
+    typeChange = (e) => {
+        this.setState({ type: e.target.value });
+        scriptUtil.excuteScriptService({
+            objName: "parkFactoryInfo",
+            serviceName: e.target.value  === '实时报警' ? "getRuntimeAlarm" : "getHistoryAlarm",
+            params: {},
             cb: (res) => {
                 console.log(res);
                 this.setState({
@@ -133,29 +161,29 @@ class CustomComp extends Component {
                         margin: 'auto',
                         display: 'flex',
                     }}>
-                        <div 
-                          style={{ width: '94px', height: '38px', fontSize: '16px', textAlign: 'center', lineHeight: '38px', color: '#fff', background: `url(${bg1}) no-repeat center / 99px 44px` }}
-                          onClick={() => { location.hash = `#/runtime-fullscreen/runtime-fullscreen/Page_bf92ec85c1ad4588ade5d15edda0ca08` }}
+                        <div
+                            style={{ width: '94px', height: '38px', fontSize: '16px', textAlign: 'center', lineHeight: '38px', color: '#fff', background: `url(${bg1}) no-repeat center / 99px 44px` }}
+                            onClick={() => { location.hash = `#/runtime-fullscreen/runtime-fullscreen/Page_bf92ec85c1ad4588ade5d15edda0ca08` }}
                         >
-                          总览
+                            总览
                         </div>
-                        <div 
-                          style={{ width: '94px', height: '38px', fontSize: '16px', textAlign: 'center', lineHeight: '38px', color: '#fff', background: `url(${bg2}) no-repeat center / 99px 38px` }}
-                          onClick={() => { location.hash = '#/runtime-fullscreen/runtime-fullscreen/Page_a77b775b3468448f915b073492e06dce' }}
+                        <div
+                            style={{ width: '94px', height: '38px', fontSize: '16px', textAlign: 'center', lineHeight: '38px', color: '#fff', background: `url(${bg2}) no-repeat center / 99px 38px` }}
+                            onClick={() => { location.hash = '#/runtime-fullscreen/runtime-fullscreen/Page_a77b775b3468448f915b073492e06dce' }}
                         >
-                          报警管理
+                            报警管理
                         </div>
-                        <div 
-                          style={{ width: '94px', height: '38px', fontSize: '16px', textAlign: 'center', lineHeight: '38px', color: '#fff', background: `url(${bg1}) no-repeat center / 99px 38px` }} 
-                          onClick={() => {location.hash = `#/runtime-fullscreen/runtime-fullscreen/Page_4356cc4fa6a04729bff8bfdb8da0be60` }}
+                        <div
+                            style={{ width: '94px', height: '38px', fontSize: '16px', textAlign: 'center', lineHeight: '38px', color: '#fff', background: `url(${bg1}) no-repeat center / 99px 38px` }}
+                            onClick={() => { location.hash = `#/runtime-fullscreen/runtime-fullscreen/Page_4356cc4fa6a04729bff8bfdb8da0be60` }}
                         >
-                          统计分析
+                            统计分析
                         </div>
-                        <div 
-                          style={{ width: '94px', height: '38px', fontSize: '16px', textAlign: 'center', lineHeight: '38px', color: '#fff', background: `url(${bg1}) no-repeat center / 99px 38px` }} 
-                          onClick={() => {location.hash = `#/design/hellow` }}
+                        <div
+                            style={{ width: '94px', height: '38px', fontSize: '16px', textAlign: 'center', lineHeight: '38px', color: '#fff', background: `url(${bg1}) no-repeat center / 99px 38px` }}
+                            onClick={() => { location.hash = `#/design/hellow` }}
                         >
-                          系统管理
+                            系统管理
                         </div>
                     </div>
                     <img
@@ -168,28 +196,32 @@ class CustomComp extends Component {
                             top: '20px'
                         }} />
                 </header>
+
                 <div className='container'>
-                    <div className='serch-wrapper'>
+                    <div className='serch-wrapper' ref={this.element}>
                         <div className='serch-bar-left'>
-                            <Radio.Group value={type} buttonStyle="solid" onChange={(e) => this.setState({ type: e.target.value })} >
+                            <Radio.Group value={type} buttonStyle="solid" onChange={this.typeChange} >
                                 <Radio.Button value="实时报警">实时报警</Radio.Button>
                                 <Radio.Button value="历史报警">历史报警</Radio.Button>
                             </Radio.Group>
                         </div>
                         <div className='serch-bar'>
-                            <div className='serch-bar-item'>
+                            <div className='serch-bar-item' id='sa1'>
                                 <Select
                                     style={{ width: '100px' }}
                                     value={area}
-                                    onChange={(val) => { this.setState({ area: val }) }}
+                                    getPopupContainer={() => document.getElementById('sa1')}
+                                    onChange={(val) => { console.log(val); this.setState({ area: val }) }}
+                                    onClick={(val) => { console.log(123, val) }}
                                 >
                                     {areas.map(item => <Select.Option value={item.optionValue} key={item.optionValue}>{item.optionText}</Select.Option>)}
                                 </Select>
                             </div>
-                            <div className='serch-bar-item'>
+                            <div className='serch-bar-item' id='sa2'>
                                 <Select
-                                    style={{ width: '100px' }}
+                                    style={{ width: '140px' }}
                                     value={factoryType}
+                                    getPopupContainer={() => document.getElementById('sa2')}
                                     onChange={(val) => { this.setState({ factoryType: val }) }}
                                 >
                                     {factoryTypes.map(item => <Select.Option value={item.optionValue} key={item.optionValue}>{item.optionText}</Select.Option>)}
@@ -203,7 +235,7 @@ class CustomComp extends Component {
                             </div>
                         </div>
                     </div>
-                    
+
                     <Table
                         bordered
                         dataSource={filterData}
@@ -233,6 +265,7 @@ css.innerHTML = `
     .supos-comp-wrapper .container {
         width: 100%;
         overflow: hidden;
+        height: calc(100% - 86px);
     }
     .supos-comp-wrapper .serch-bar {
         margin-bottom: 8px;
@@ -265,10 +298,10 @@ css.innerHTML = `
     }
     .supos-comp-wrapper .serch-bar-item {
         margin-right:6px;
-        float:left
+        float:left;
     }
     .table-pos {
-        height: 100%;
+        height: calc(100% - 93px);
         margin: 20px 30px 0;
     }
     .supos-comp-wrapper .input-ctrl {

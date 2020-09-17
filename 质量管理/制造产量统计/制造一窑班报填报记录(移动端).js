@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { Button, DatePicker, Select, Table, Input, Spin, Form, message, Row, Col } from 'antd';
+import { Button, DatePicker, Select, Table, Input, Popconfirm, Form, message, Row, Col,Spin } from 'antd';
 import moment from 'moment';
 var css = document.createElement('style');
 css.type = 'text/css';
@@ -51,7 +51,7 @@ document.getElementsByTagName('head')[0].appendChild(css);
 const EditableContext = React.createContext();
 
 const Factory = '制造一';
-const Type = '原料磨';
+const Type = '窑';
 
 const EditableRow = ({ form, index, ...props }) => (
     <EditableContext.Provider value={form}>
@@ -98,20 +98,19 @@ class EditableCell extends React.Component {
 
     renderCell = form => {
         this.form = form;
-        const { children, dataIndex, record } = this.props;
+        const { children, dataIndex, record, title, typeData } = this.props;
         const { editing } = this.state;
         return editing ? (
             <Form.Item style={{ margin: 0 }}>
                 {form.getFieldDecorator(`${dataIndex}-${record.id}`, {
                     rules: [
                         {
-                            pattern: /^-?[1-9]\d*(\.\d{1,2})?$|^0+(\.\d{1,2})?$/,
+                            pattern: /^[1-9]\d*(\.\d{1,2})?$|^0+(\.\d{1,2})?$/,
                             message: '数字不合法',
                         },
                     ],
                     initialValue: record[dataIndex],
                 })(<Input
-                    type='number'
                     ref={node => (this.input = node)}
                     onPressEnter={() => this.save(`${dataIndex}-${record.id}`)}
                     onBlur={() => this.save(`${dataIndex}-${record.id}`)}
@@ -154,7 +153,6 @@ class CustomComp extends Component {
     constructor(props) {
         super(props)
         this.state = {
-            visable: false,
             data: [],
             proDate: moment().format(dateFormat),
             team: "", // 班组
@@ -162,11 +160,12 @@ class CustomComp extends Component {
             typeData: [],
             crusher: [],
             currentCrusher: '',
+            submiting: false,
             submitType: 'insert',
-            runTime: '',
-            remark: '',
             message: '',
-            icon: ''
+            visable:false,
+            runTime: '',
+            remark: ''
         };
         this.element = React.createRef()
     }
@@ -200,6 +199,7 @@ class CustomComp extends Component {
                 }
                 const { data } = this.state;
                 const lime = data.filter(item => item.DeviceName === row.DeviceName);
+
                 if (row.id === lime[0].id) {
                     obj.props.rowSpan = lime.length
                 } else {
@@ -219,7 +219,6 @@ class CustomComp extends Component {
             key: 'OutPut',
             align: 'center',
             dataIndex: 'OutPut',
-            render: text => <p style={{ textAlign: 'center', fontSize: '14px', height: '32px', lineHeight: '32px', padding: 0, margin: 0 }}>{text}</p>,
             onCell: record => ({
                 record,
                 editable: true,
@@ -284,7 +283,6 @@ class CustomComp extends Component {
                 });
             })
         }
-
     }
     onSerchKeyChange = (key, value) => {
         this.setState({
@@ -302,11 +300,11 @@ class CustomComp extends Component {
 
     rowMount = (data) => {
         if (!data.length) return [];
-        const mount = data.reduce((mount, item) => { mount += Number(item.OutPut); return mount }, 0)
-        return data.concat({ Raw: '产量', block: true, OutPut: (mount * 0.97).toFixed(2) })
+        const mount = data.reduce((mount, item) => { mount += Number(item.OutPut); return mount; }, 0)
+        return data.concat({ Raw: '熟料产量', block: true, OutPut: (mount/1.63).toFixed(2) })
     }
 
-
+//运行时长
     getRunTime = () => {
         let { proDate, team, currentCrusher } = this.state;
 
@@ -357,7 +355,6 @@ class CustomComp extends Component {
                             // Team: team,
                         },
                         cb: (res) => {
-                            if (!res.result) { return false; }
                             this.setState({
                                 submitType: 'insert',
                                 data: this.rowMount(res.result.list),
@@ -367,14 +364,13 @@ class CustomComp extends Component {
                     });
                 } else {
                     if (!res || !res.result || !res.result.list[0]) return false;
-                    const item = res.result.list[0];
                     this.setState({
-                        submitType: 'update',
+                        submitType :'update',
                         data: this.rowMount(res.result.list),
                         remark: res.result.list[0].Remark,
                         runTime: res.result.list[0].RunningTime,
                         visable: false,
-                        message: '',
+                        message: ''
                     })
                 }
                 this.setState({
@@ -385,8 +381,11 @@ class CustomComp extends Component {
         });
     }
     handleSaveSubmit = () => {
-        let { data, proDate, currentCrusher } = this.state;
-        return new Promise((resolve, reject) => {
+        let { data,currentCrusher,proDate } = this.state;
+        this.setState({
+            submiting: true
+        })
+        return new Promise((resolve,reject)=>{
             scriptUtil.excuteScriptService({
                 objName: 'DeviceReport',
                 serviceName: 'AddDataTableEntries',
@@ -442,11 +441,13 @@ class CustomComp extends Component {
                 }
             });
         })
-
     }
     handleEditSubmit = () => {
         const { data } = this.state;
-        const promiseData = data.slice(0, -1).map(item => new Promise((resolve, reject) => {
+        this.setState({
+            submiting: true
+        })
+        const promiseData = data.slice(0, -1).map(item => new Promise((resolve) => {
             const jsonData = {
                 update: {
                     Expent: Number(item.OutPut),
@@ -487,11 +488,7 @@ class CustomComp extends Component {
                     })
                 },
                 cb: (res) => {
-                    if (res && (res.result == (data.length - 1))) {
-                        resolve(true);
-                    } else {
-                        reject(false);
-                    }
+                    resolve(res.result)
                 }
             });
         }))
@@ -512,7 +509,6 @@ class CustomComp extends Component {
         })
     }
     disabledDate = (current) => current && current > moment().endOf('day');
-
     submit = () => {
         const { proDate, team, currentCrusher } = this.state;
         new Promise((resolve, reject) => {
@@ -522,7 +518,7 @@ class CustomComp extends Component {
                 params: {
                     ProDate: proDate,
                     Device: currentCrusher,
-                    Team: team,
+                    // Team: team,
                 },
                 cb: (res) => {
                     if (!res.result) {
@@ -554,7 +550,7 @@ class CustomComp extends Component {
                     prodate: this.state.proDate,
                     // team: '',
                     Content: this.state.currentCrusher,
-                    type: '原料磨'
+                    type: '窑'
                 }
             };
             scriptUtil.excuteScriptService({
@@ -567,9 +563,8 @@ class CustomComp extends Component {
             });
         })
     }
-
     render() {
-        const { proDate, team, data, currentCrusher, runTime, remark, message, visable, submitType } = this.state;
+        const { proDate, team, data, currentCrusher, runTime, remark,message, visable, submitType } = this.state;
         const components = {
             body: {
                 row: EditableFormRow,
@@ -594,8 +589,18 @@ class CustomComp extends Component {
                                 >
                                 </DatePicker>
                             </Col>
-                            <Col span={5} style={borderTopRight}></Col>
-                            <Col span={7} style={Object.assign({}, borderTopRight, rightBorderNone)}></Col>
+                            <Col span={5} style={borderTopRight}>
+                                {/* <label style={headerLabel}>班组：</label> */}
+                            </Col>
+                            <Col span={7} style={Object.assign({}, borderTopRight, rightBorderNone)}>
+                                {/* <Select
+                                    style={selectStyle}
+                                    value={team}
+                                    onChange={(value) => this.onSerchKeyChange('team', value)}
+                                >
+                                    {this.teamOption.map(item => <Select.Option value={item.key}>{item.value}</Select.Option>)}
+                                </Select> */}
+                            </Col>
                         </Row>
                         <Row>
                             <Col span={5} style={borderTopRight}>

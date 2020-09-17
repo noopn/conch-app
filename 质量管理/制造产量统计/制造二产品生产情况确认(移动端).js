@@ -1,57 +1,57 @@
 import React, { Component } from 'react';
-import { Button, DatePicker, Select, Table, Input, Spin, Form, message, Row, Col } from 'antd';
+import { Button, DatePicker, Select, Table, Input, Popconfirm, Form, message, Row, Col, Spin} from 'antd';
 import moment from 'moment';
 var css = document.createElement('style');
 css.type = 'text/css';
 css.innerHTML = `
-    .ant-table .ant-table-tbody > tr > td { 
-        white-space: nowrap;
-        border-bottom: 1px solid #e8e8e8;
-        padding: 4px;
-    }
-    .ant-table-body {
-      overflow: hidden;
-    }
+.ant-table .ant-table-tbody > tr > td { 
+    white-space: nowrap;
+    border-bottom: 1px solid #e8e8e8;
+    padding: 4px;
+}
+.ant-table-body {
+overflow: hidden;
+}
 
-    .ant-table-bordered .ant-table-body > table {
-      border-left: none;
-      border-right: none;
-    }
-    .ant-table-thead {
-      border-bottom: 1px solid #e8e8e8;
-      border-top: 1px solid #e8e8e8;
-    }
-    .ant-table thead.ant-table-thead > tr > th {
-      background: transparent !important;
-      color: #444 !important;
-      font-weight: bold !important;
-    }
-    .ant-table thead.ant-table-thead > tr > th:last-child {
-      border: none
-    }
-    .ant-table-thead > tr > th {
-        text-align: center;
-    }
-    .ant-calendar-picker input {
-      border:none;
-      text-align:center
-    }
-    .ant-select-selection {
-      border:none
-    }
-    input::-webkit-outer-spin-button,
-    input::-webkit-inner-spin-button {
-        -webkit-appearance: none;
-    }
-    #appPreviewWrapper .ant-spin-container {
-        overflow: visible !important;
-    }
-    `;
+.ant-table-bordered .ant-table-body > table {
+border-left: none;
+border-right: none;
+}
+.ant-table-thead {
+border-bottom: 1px solid #e8e8e8;
+border-top: 1px solid #e8e8e8;
+}
+.ant-table thead.ant-table-thead > tr > th {
+background: transparent !important;
+color: #444 !important;
+font-weight: bold !important;
+}
+.ant-table thead.ant-table-thead > tr > th:last-child {
+border: none
+}
+.ant-table-thead > tr > th {
+    text-align: center;
+}
+.ant-calendar-picker input {
+border:none;
+text-align:center
+}
+.ant-select-selection {
+border:none
+}
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+}
+#appPreviewWrapper .ant-spin-container {
+    overflow: visible !important;
+}
+`;
 document.getElementsByTagName('head')[0].appendChild(css);
 const EditableContext = React.createContext();
 
-const Factory = '制造一';
-const Type = '原料磨';
+const Factory = '制造二';
+//const Type = '原料磨';
 
 const EditableRow = ({ form, index, ...props }) => (
     <EditableContext.Provider value={form}>
@@ -64,6 +64,7 @@ class EditableCell extends React.Component {
         editing: false,
     };
     toggleEdit = (record, id, dataIndex, e) => {
+        console.log(record, id, dataIndex, e)
         e && e.stopPropagation();
         if (record.block) return false;
         const editing = !this.state.editing;
@@ -75,12 +76,7 @@ class EditableCell extends React.Component {
                         e.stopPropagation();
                     }, false)
                 }
-                if (dataIndex === 'OutPut') {
-                    this.input.focus();
-                }
-                if (dataIndex === 'type') {
-                    this.select.focus();
-                }
+                this.input.focus();
             }
         });
     };
@@ -98,20 +94,19 @@ class EditableCell extends React.Component {
 
     renderCell = form => {
         this.form = form;
-        const { children, dataIndex, record } = this.props;
+        const { children, dataIndex, record, title, typeData } = this.props;
         const { editing } = this.state;
         return editing ? (
             <Form.Item style={{ margin: 0 }}>
                 {form.getFieldDecorator(`${dataIndex}-${record.id}`, {
                     rules: [
                         {
-                            pattern: /^-?[1-9]\d*(\.\d{1,2})?$|^0+(\.\d{1,2})?$/,
+                            pattern: /^[1-9]\d*(\.\d{1,2})?$|^0+(\.\d{1,2})?$/,
                             message: '数字不合法',
                         },
                     ],
                     initialValue: record[dataIndex],
                 })(<Input
-                    type='number'
                     ref={node => (this.input = node)}
                     onPressEnter={() => this.save(`${dataIndex}-${record.id}`)}
                     onBlur={() => this.save(`${dataIndex}-${record.id}`)}
@@ -154,52 +149,37 @@ class CustomComp extends Component {
     constructor(props) {
         super(props)
         this.state = {
-            visable: false,
             data: [],
             proDate: moment().format(dateFormat),
-            team: "", // 班组
+            //team: "", // 班组
             buttonType: null,
             typeData: [],
-            crusher: [],
-            currentCrusher: '',
+            //crusher: [],
+            //currentCrusher: '',
             submitType: 'insert',
-            runTime: '',
-            remark: '',
             message: '',
-            icon: ''
+            visable:false,
+            //runTime: '',
+            //remark: ''
         };
         this.element = React.createRef()
     }
 
-    get teamOption() {
-        const arr = [];
-        if (moment(`${this.state.proDate} 08:00:00`, 'YYYY-MM-DD HH:mm:ss').valueOf() <= moment().valueOf()) {
-            arr.push({ key: '夜班', value: '夜班' })
-        }
-        if (moment(`${this.state.proDate} 16:00:00`, 'YYYY-MM-DD HH:mm:ss').valueOf() <= moment().valueOf()) {
-            arr.push({ key: '白班', value: '白班' })
-        }
-        if (moment(this.state.proDate, 'YYYY-MM-DD').endOf('day').valueOf() <= moment().valueOf()) {
-            arr.push({ key: '中班', value: '中班' })
-        }
-        if (!arr.length) {
-            arr.push({ key: 'null', value: '暂无班组查询' })
-        }
-        return arr;
-    }
     columns = [
         {
-            title: '设备',
-            key: 'DeviceName',
+            title: '项目',
+            key: 'ProduceYard',
             align: 'center',
-            dataIndex: 'DeviceName',
+            dataIndex: 'ProduceYard',
+            width: '24%',
             render: (text, row,) => {
                 const obj = {
                     children: text,
                     props: {},
                 }
                 const { data } = this.state;
-                const lime = data.filter(item => item.DeviceName === row.DeviceName);
+                const lime = data.filter(item => item.ProduceYard === row.ProduceYard);
+
                 if (row.id === lime[0].id) {
                     obj.props.rowSpan = lime.length
                 } else {
@@ -209,22 +189,39 @@ class CustomComp extends Component {
             },
         },
         {
-            title: '原材料',
-            key: 'Raw',
+            title: '堆场',
+            key: 'YardName',
             align: 'center',
-            dataIndex: 'Raw',
+            dataIndex: 'YardName',
+            width: '24%',
         },
         {
-            title: '消耗量（吨）',
+            title: '日生产（吨）',
+            key: 'Expent',
+            align: 'center',
+            dataIndex: 'Expent',
+            width: '26%',
+            render: text => <p style={{ textAlign: 'center', fontSize: '14px', height: '32px', lineHeight: '32px', padding: 0, margin: 0 }}>{text}</p>,
+            onCell: record => ({
+                record,
+                editable: true,
+                dataIndex: 'Expent',
+                title: '生产',
+                handleSave: this.handleSave,
+            })
+        },
+        {
+            title: '日输出（吨）',
             key: 'OutPut',
             align: 'center',
             dataIndex: 'OutPut',
+            width: '26%',
             render: text => <p style={{ textAlign: 'center', fontSize: '14px', height: '32px', lineHeight: '32px', padding: 0, margin: 0 }}>{text}</p>,
             onCell: record => ({
                 record,
                 editable: true,
                 dataIndex: 'OutPut',
-                title: '产量',
+                title: '输出',
                 handleSave: this.handleSave,
             })
         }
@@ -237,13 +234,9 @@ class CustomComp extends Component {
             ...item,
             ...row,
         });
-        this.setState({ data: this.rowMount(newData.slice(0, -1)) });
+        // this.setState({ data: this.rowMount(newData.slice(0, -1)) });
+        this.setState({ data: newData });
     };
-    componentWillMount() {
-        this.setState({
-            team: this.teamOption[0].key
-        })
-    }
     componentDidMount() {
         scriptUtil.getUserInfo(user => {
             scriptUtil.excuteScriptService({
@@ -261,22 +254,7 @@ class CustomComp extends Component {
                 }
             });
         });
-        new Promise((resolve) => {
-            scriptUtil.excuteScriptService({
-                objName: "SCGL",
-                serviceName: "GetDevice",
-                params: { Factory, Type },
-                cb: (res) => {
-                    this.setState({
-                        crusher: res.result.list,
-                        currentCrusher: res.result.list[0].optionValue
-                    })
-                    resolve()
-                }
-            });
-        }).then(() => {
-            this.fetchData();
-        })
+        this.fetchData();
         if (this.element && this.element.current) {
             ["touchstart", "touchmove", "touchend"].forEach((event) => {
                 this.element.current.addEventListener(event, (e) => {
@@ -290,11 +268,6 @@ class CustomComp extends Component {
         this.setState({
             [key]: value
         }, () => {
-            if (key === 'proDate') {
-                this.setState({
-                    team: this.teamOption[0].key
-                })
-            }
             this.fetchData();
         })
     }
@@ -302,34 +275,18 @@ class CustomComp extends Component {
 
     rowMount = (data) => {
         if (!data.length) return [];
-        const mount = data.reduce((mount, item) => { mount += Number(item.OutPut); return mount }, 0)
-        return data.concat({ Raw: '产量', block: true, OutPut: (mount * 0.97).toFixed(2) })
+        const mount = data.reduce((mount, item) => { mount += Number(item.OutPut); return mount }, 0);
+        const expent = data.reduce((expent, item) => { expent += Number(item.Expent); return expent }, 0);
+
+        return data.concat({ YardName: '合计', block: true, Expent: expent, OutPut: mount })
     }
 
 
-    getRunTime = () => {
-        let { proDate, team, currentCrusher } = this.state;
-
-        scriptUtil.excuteScriptService({
-            objName: "SCGL",
-            serviceName: "GetDeviceRunningTime",
-            params: {
-                prodate: proDate,
-                DeviceId: currentCrusher,
-                team
-            },
-            cb: (res) => {
-                this.setState({
-                    runTime: res.result
-                })
-            }
-        })
-    }
 
     fetchData = () => {
-        let { proDate, team, currentCrusher } = this.state;
+        let { proDate } = this.state;
         // proDate = proDate.split('-').map(item => Number(item)).join('-');
-        if (team === 'null' || proDate === '') {
+        if (proDate === '') {
             message.warn('请检查查询参数,或切换查询日期');
             return false;
         }
@@ -339,42 +296,34 @@ class CustomComp extends Component {
         })
         scriptUtil.excuteScriptService({
             objName: "SCGL",
-            serviceName: "GetDeviceReport",
+            serviceName: "GetYardOutPutInfo",
             params: {
                 ProDate: proDate,
-                Device: currentCrusher,
-                // Team: team,
+                Factory
             },
             cb: (res) => {
                 if (res.result.list.length === 0) {
-                    this.getRunTime();
+                    //this.getRunTime();
                     scriptUtil.excuteScriptService({
                         objName: "SCGL",
-                        serviceName: "GetProduceOutPut",
+                        serviceName: "GetYardProduceData",
                         params: {
-                            day: proDate,
-                            Deviceid: currentCrusher,
-                            // Team: team,
+                            ProDate: proDate,
+                            Factory
                         },
                         cb: (res) => {
-                            if (!res.result) { return false; }
                             this.setState({
-                                submitType: 'insert',
-                                data: this.rowMount(res.result.list),
-                                remark: ''
+                                submitType:'insert',
+                                // data: this.rowMount(res.result.list)
+                                data:res.result.list
                             })
                         }
                     });
                 } else {
-                    if (!res || !res.result || !res.result.list[0]) return false;
-                    const item = res.result.list[0];
                     this.setState({
-                        submitType: 'update',
-                        data: this.rowMount(res.result.list),
-                        remark: res.result.list[0].Remark,
-                        runTime: res.result.list[0].RunningTime,
-                        visable: false,
-                        message: '',
+                        submitType:'update',
+                        // data: this.rowMount(res.result.list)
+                        data: res.result.list
                     })
                 }
                 this.setState({
@@ -385,52 +334,48 @@ class CustomComp extends Component {
         });
     }
     handleSaveSubmit = () => {
-        let { data, proDate, currentCrusher } = this.state;
-        return new Promise((resolve, reject) => {
+        let { data,proDate } = this.state;
+        return new Promise((resolve,reject)=>{
+
             scriptUtil.excuteScriptService({
-                objName: 'DeviceReport',
+                objName: 'YardOutPut',
                 serviceName: 'AddDataTableEntries',
                 params: {
                     params: JSON.stringify({
-                        list: data.slice(0, -1).map(item => ({
-                            DeviceId: this.state.currentCrusher,
-                            team: this.state.team,
+                        list: data.map(item => ({
+                            ProduceYard: item.ProduceYard,
+                            YardName:item.YardName,
                             ProDate: this.state.proDate,
-                            RunningTime: Number(this.state.runTime),
-                            Remark: this.state.remark,
                             Creator: this.state.staffName,
                             CreatTime: moment().format('YYYY-MM-DD HH:mm:ss'),
-                            Raw: item.Raw,
-                            Expent: Number(item.OutPut)
+                            OutPut: Number(item.OutPut),
+                            Factory,
+                            Expend: Number(item.Expent)
                         }))
                     })
                 },
                 cb: (res) => {
-                    if (!res.result || res.result !== (data.length - 1)) {
+                    if (!res.result || res.result !==data.length) {
                         message.error('保存失败');
                         this.setState({
                             submitType: 'insert',
                             visable: false,
                             message: ''
                         })
-                    } else {
+                    }else {
                         message.success('保存成功');
                         // 保存成功重新拉取新表中的数据,因为id发生变化，再次操作在新表中操作
                         scriptUtil.excuteScriptService({
                             objName: "SCGL",
-                            serviceName: "GetDeviceReport",
+                            serviceName: "GetYardOutPutInfo",
                             params: {
                                 ProDate: proDate,
-                                Device: currentCrusher,
-                                // Team: team,
+                                Factory
                             },
                             cb: (res) => {
-                                if (!res || !res.result || !res.result.list[0]) return false;
-                                const item = res.result.list[0];
+                                if (!res || !res.result || !res.result.list) return false;
                                 this.setState({
-                                    data: this.rowMount(res.result.list),
-                                    remark: item.Remark,
-                                    runTime: item.RunningTime,
+                                    data: res.result.list,
                                     submitType: 'update',
                                     visable: false,
                                     message: ''
@@ -441,22 +386,22 @@ class CustomComp extends Component {
                     resolve(res.result)
                 }
             });
-        })
-
+        });
     }
     handleEditSubmit = () => {
         const { data } = this.state;
-        const promiseData = data.slice(0, -1).map(item => new Promise((resolve, reject) => {
+        const promiseData = data.map(item => new Promise((resolve) => {
             const jsonData = {
                 update: {
-                    Expent: Number(item.OutPut),
+                    Expend: Number(item.Expent),
+                    OutPut: Number(item.OutPut)
                 },
                 where: {
                     id: item.id
                 }
             };
             scriptUtil.excuteScriptService({
-                objName: "DeviceReport",
+                objName: "YardOutPut",
                 serviceName: "UpdateDataTableEntry",
                 params: {
                     updateData: JSON.stringify(jsonData)
@@ -469,33 +414,8 @@ class CustomComp extends Component {
                     }
                 }
             });
-        })).concat(new Promise(resolve => {
-            scriptUtil.excuteScriptService({
-                objName: "DeviceReport",
-                serviceName: "UpdateDataTableEntry",
-                params: {
-                    updateData: JSON.stringify({
-                        update: {
-                            Remark: this.state.remark,
-                            RunningTime: Number(this.state.runTime),
-                        },
-                        where: {
-                            DeviceId: this.state.currentCrusher,
-                            ProDate: this.state.proDate,
-                            team: this.state.team,
-                        }
-                    })
-                },
-                cb: (res) => {
-                    if (res && (res.result == (data.length - 1))) {
-                        resolve(true);
-                    } else {
-                        reject(false);
-                    }
-                }
-            });
         }))
-        Promise.all(promiseData).then(res => {
+        return Promise.all(promiseData).then(res => {
             message.success('修改成功')
         }).catch(() => {
             message.error('修改失败')
@@ -512,17 +432,18 @@ class CustomComp extends Component {
         })
     }
     disabledDate = (current) => current && current > moment().endOf('day');
-
     submit = () => {
         const { proDate, team, currentCrusher } = this.state;
+        this.setState({
+            visable: true,
+        })
         new Promise((resolve, reject) => {
             scriptUtil.excuteScriptService({
                 objName: "SCGL",
-                serviceName: "GetDeviceReport",
+                serviceName: "GetYardOutPutInfo",
                 params: {
                     ProDate: proDate,
-                    Device: currentCrusher,
-                    Team: team,
+                    Factory,
                 },
                 cb: (res) => {
                     if (!res.result) {
@@ -549,12 +470,12 @@ class CustomComp extends Component {
             const jsonData = {
                 'update': {
                     Confirm_flag: 1
-                },
+                },  
                 'where': {
                     prodate: this.state.proDate,
-                    // team: '',
-                    Content: this.state.currentCrusher,
-                    type: '原料磨'
+                    Content: Factory,
+                    type: '生产情况',
+                    team:'天'
                 }
             };
             scriptUtil.excuteScriptService({
@@ -567,9 +488,8 @@ class CustomComp extends Component {
             });
         })
     }
-
     render() {
-        const { proDate, team, data, currentCrusher, runTime, remark, message, visable, submitType } = this.state;
+        const { proDate, data,message, visable, submitType } = this.state;
         const components = {
             body: {
                 row: EditableFormRow,
@@ -594,29 +514,10 @@ class CustomComp extends Component {
                                 >
                                 </DatePicker>
                             </Col>
-                            <Col span={5} style={borderTopRight}></Col>
-                            <Col span={7} style={Object.assign({}, borderTopRight, rightBorderNone)}></Col>
+                            <Col span={5} style={borderTopRight} />
+                            <Col span={7} style={borderTopRight} />
                         </Row>
-                        <Row>
-                            <Col span={5} style={borderTopRight}>
-                                <label style={headerLabel}>设备：</label>
-                            </Col>
-                            <Col span={7} style={borderTopRight}>
-                                <Select
-                                    style={selectStyle}
-                                    value={currentCrusher}
-                                    onChange={(value) => this.onSerchKeyChange('currentCrusher', value)}
-                                >
-                                    {this.state.crusher.map(item => <Select.Option value={item.optionValue}>{item.optionText}</Select.Option>)}
-                                </Select>
-                            </Col>
-                            <Col span={5} style={borderTopRight}>
-                                <label style={headerLabel}>运行时长：</label>
-                            </Col>
-                            <Col span={7} style={Object.assign({}, borderTopRight, rightBorderNone)}>
-                                <Input value={runTime} onChange={(e) => this.setState({ runTime: e.target.value })} />
-                            </Col>
-                        </Row>
+
                     </div>
                     <Table
                         style={{ wordBreak: 'break-all' }}
@@ -624,13 +525,10 @@ class CustomComp extends Component {
                         columns={this.columns}
                         dataSource={data}
                         pagination={false}
+                        // scroll={{ y: 'calc(100vh - 140px)' }}
                         bordered
                     />
-                    <div style={remarkWrapper}>
-                        <label>备注</label>
-                        <input style={remarkInput} value={remark} onInput={this.remarkChange} />
-                    </div>
-                    <Button
+                  <Button
                         style={submitButton}
                         onClick={this.submit}
                     >{submitType === 'insert' ? '保存' : '修改'}</Button>
@@ -649,23 +547,6 @@ const containerWrapper = {
     top: 0,
     bottom: 0,
     margin: 'auto'
-}
-const remarkWrapper = {
-    display: 'flex',
-    alignItems: 'center',
-    lineHeight: '44px',
-    paddingLeft: '20px',
-    borderBottom: '1px solid #e8e8e8'
-}
-const remarkInput = {
-    flex: 1,
-    border: 'none',
-    marginLeft: '20px',
-    /* display: table-cell; */
-    width: '200px',
-    height: '36px',
-    paddingLeft: '20px',
-    border: '1px solid #e8e8e8'
 }
 const headerLabel = {
     whiteSpace: 'nowrap'

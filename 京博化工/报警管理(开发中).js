@@ -23,6 +23,7 @@ import {
     Icon,
     Radio,
     Switch,
+    Spin
 } from 'antd';
 import {
     get,
@@ -35,6 +36,7 @@ import {
     toLower,
     delay,
     merge,
+    debounce
 } from 'lodash';
 import '../extensions/AlarmManager/source/index.css';
 
@@ -1154,30 +1156,30 @@ class AlarmManager extends React.PureComponent {
                 dataIndex: 'objLabelShowName',
                 key: 'objLabelShowName',
                 width: '10%',
-                render: (text, recrod, index) => <Input value={text} onBlur={() => this.handleOuterAlarmInfoComfirm(recrod)} onChange={(e) => this.handleOuterEditRowItem('typeName', e, recrod, index)} />,
+                // render: (text, recrod, index) => <Input value={text} onBlur={() => this.handleOuterAlarmInfoComfirm(recrod)} onChange={(e) => this.handleOuterEditRowItem('typeName', e, recrod, index)} />,
             },
             {
                 title: '报警名称',
                 dataIndex: 'alarmName',
                 key: 'alarmName',
                 width: '8%',
-                // render: text => <span title={text}>{text}</span>,
-                render: (text, recrod, index) => <Input value={text} onBlur={() => this.handleOuterAlarmInfoComfirm(recrod)} onChange={(e) => this.handleOuterEditRowItem('alarmName', e, recrod, index)} />,
+                render: text => <span title={text}>{text}</span>,
+                // render: (text, recrod, index) => <Input value={text} onBlur={() => this.handleOuterAlarmInfoComfirm(recrod)} onChange={(e) => this.handleOuterEditRowItem('alarmName', e, recrod, index)} />,
             },
             {
                 title: '报警描述',
                 dataIndex: 'description',
                 key: 'description',
                 width: '12%',
-                // render: text => <span title={text}>{text}</span>,
-                render: (text, recrod, index) => <Input value={text} onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }} onBlur={() => { console.log('报警描述'); this.handleOuterAlarmInfoComfirm(recrod) }} onChange={(e) => this.handleOuterEditRowItem('description', e, recrod, index)} />,
+                render: text => <span title={text}>{text}</span>,
+                // render: (text, recrod, index) => <Input value={text} onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }} onBlur={() => { console.log('报警描述'); this.handleOuterAlarmInfoComfirm(recrod) }} onChange={(e) => this.handleOuterEditRowItem('description', e, recrod, index)} />,
             },
             {
                 title: '报警等级',
                 dataIndex: 'priority',
                 key: 'priority',
                 width: '5%',
-                render: (text, recrod, index) => <Select value={text} onBlur={() => this.handleOuterAlarmInfoComfirm(recrod)} onChange={(value) => this.handleOuterEditRowItem('priority', { target: { value } }, recrod, index)}>{[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(l => <Select.Option key={l} value={l}>{l}</Select.Option>)}</Select>,
+                // render: (text, recrod, index) => <Select value={text} onBlur={() => this.handleOuterAlarmInfoComfirm(recrod)} onChange={(value) => this.handleOuterEditRowItem('priority', { target: { value } }, recrod, index)}>{[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(l => <Select.Option key={l} value={l}>{l}</Select.Option>)}</Select>,
             },
             {
                 title: '触发条件',
@@ -1191,8 +1193,8 @@ class AlarmManager extends React.PureComponent {
                 dataIndex: 'duration',
                 key: 'duration',
                 width: '6%',
-                // render: text => <span title={text}>{text}</span>,
-                render: (text, recrod, index) => <Input value={text} onBlur={() => this.handleOuterAlarmInfoComfirm(recrod)} onChange={(e) => this.handleOuterEditRowItem('duration', e, recrod, index)} />,
+                render: text => <span title={text}>{text}</span>,
+                // render: (text, recrod, index) => <Input value={text} onBlur={() => this.handleOuterAlarmInfoComfirm(recrod)} onChange={(e) => this.handleOuterEditRowItem('duration', e, recrod, index)} />,
             },
             {
                 title: '是否启用',
@@ -1209,24 +1211,22 @@ class AlarmManager extends React.PureComponent {
                 render: (text, record) => {
                     return (
                         <div className="tableLineStyle">
-                            <span
+                            {/* <span
                                 className="anction"
                                 onClick={e => this.handleInstationMessageModalOpen(e, record)}
-                            >
-                                站内信
-              </span>
+                            >站内信</span> */}
                             <span
                                 className="anction"
                                 onClick={e => this.handleDingTalkGroupModalOpen(e, record)}
-                            >
-                                钉钉群
-              </span>
+                            >钉钉群</span>
+                            {/* <span
+                                className="anction"
+                                onClick={e => this.handleDingTalkUserModalOpen(e, record)}
+                            >钉钉个人</span> */}
                             <span
                                 className="anction"
                                 onClick={e => this.handleDingTalkUserModalOpen(e, record)}
-                            >
-                                钉钉个人
-              </span>
+                            >个人</span>
                         </div>
                     );
                 },
@@ -2665,6 +2665,331 @@ class DingTalkGroup extends React.PureComponent {
 }
 
 // 钉钉个人modal内部内容
+// class DingTalkUser extends React.PureComponent {
+//     static propTypes = {
+//         alarmId: PropTypes.string.isRequired,
+//         onClose: PropTypes.func,
+//     };
+
+//     static defaultProps = {
+//         onClose: null,
+//     };
+
+//     constructor(props) {
+//         super(props);
+//         this.state = {
+//             tableData: [], // 钉钉人员表格数据
+//             tableLoading: false, // 钉钉人员表格加载状态
+//             pageIndex: 1, // 页数
+//             pageSize: DEFAULT_SIZE, // 每页条数
+//             currentTotal: 0, // 钉钉人员表格总数
+//             selectedRowKeys: [], // 钉钉人员表格选中行
+//             condition: '', // 搜索内容
+//         };
+
+//         this.getTableData = this.getTableData.bind(this);
+//         this.handleClose = this.handleClose.bind(this);
+//         this.handleTableChange = this.handleTableChange.bind(this);
+//         this.handleRowSelected = this.handleRowSelected.bind(this);
+//         this.handleAllRowSelected = this.handleAllRowSelected.bind(this);
+//         this.searchKeyword = this.searchKeyword.bind(this);
+//     }
+
+//     componentDidMount() {
+//         this.getTableData();
+//     }
+
+//     // 获取钉钉个人modal表格数据
+//     getTableData(condition = '', pageIndex = 1, pageSize = DEFAULT_SIZE) {
+//         const { alarmId } = this.props;
+//         this.setState(
+//             {
+//                 tableLoading: true,
+//             },
+//             () => {
+//                 scriptUtil.excuteScriptService(
+//                     {
+//                         objName: 'tb_alarm_dingtalk_user_map',
+//                         serviceName: 'queryDingtalkUserMap',
+//                         params: {
+//                             alarmId,
+//                             name: condition,
+//                             pageIndex,
+//                             pageSize,
+//                         },
+//                     },
+//                     res => {
+//                         if (
+//                             res &&
+//                             get(res, ['code']) &&
+//                             parseInt(get(res, ['code']), 10) === 200 &&
+//                             get(res, ['result'])
+//                         ) {
+//                             const resultObj = get(res, ['result']);
+//                             const { code, body } = resultObj;
+//                             const resultData = JSON.parse(body);
+//                             console.log('DingTalkUser', resultData);
+//                             const isSelectedList = [];
+//                             forEach(resultData.list, item => {
+//                                 if (item.selected) {
+//                                     isSelectedList.push(item.id);
+//                                 }
+//                             });
+//                             if (code === 200 || code === '200') {
+//                                 // 成功
+//                                 this.setState({
+//                                     tableLoading: false,
+//                                     tableData: get(resultData, ['list'], []),
+//                                     currentTotal: get(resultData, ['total'], 0),
+//                                     selectedRowKeys: isSelectedList,
+//                                 });
+//                                 // message.success('加载成功');
+//                             } else {
+//                                 this.setState({
+//                                     tableLoading: false,
+//                                 });
+//                                 message.error('加载失败');
+//                             }
+//                         } else {
+//                             this.setState({
+//                                 tableLoading: false,
+//                             });
+//                             message.error('加载失败');
+//                         }
+//                     }
+//                 );
+//             }
+//         );
+//     }
+
+//     // 钉钉人员表格选中行
+//     handleSelectedRowKeyChange = selectedRowKeys => {
+//         this.setState({
+//             selectedRowKeys,
+//         });
+//     };
+
+//     // 点击确认/取消 关闭modal操作
+//     handleClose() {
+//         const { onClose } = this.props;
+//         if (isFunction(onClose)) {
+//             onClose();
+//         }
+//     }
+
+//     // 表格分页，排序，筛选变化时触发
+//     handleTableChange(pagination) {
+//         const { condition } = this.state;
+//         const pageIndex = get(pagination, 'current', 1);
+//         const pageSize = get(pagination, 'pageSize', 10);
+//         this.getTableData(condition, pageIndex, pageSize);
+//     }
+
+//     // 手动选中/取消某项的回调
+//     handleRowSelected(record, selected) {
+//         const { alarmId } = this.props;
+//         if (selected) {
+//             scriptUtil.excuteScriptService(
+//                 {
+//                     objName: 'tb_alarm_dingtalk_user_map',
+//                     serviceName: 'addDingtalkUserMap',
+//                     params: {
+//                         alarmId,
+//                         userId: record.id,
+//                     },
+//                 },
+//                 res => {
+//                     console.log('res', res);
+//                     if (
+//                         res &&
+//                         get(res, ['code']) &&
+//                         parseInt(get(res, ['code']), 10) === 200 &&
+//                         get(res, ['result'])
+//                     ) {
+//                         // 成功
+//                         message.success('关联成功');
+//                     } else {
+//                         message.error('关联失败');
+//                     }
+//                 }
+//             );
+//         } else {
+//             scriptUtil.excuteScriptService(
+//                 {
+//                     objName: 'tb_alarm_dingtalk_user_map',
+//                     serviceName: 'delDingtalkUserMap',
+//                     params: {
+//                         alarmId,
+//                         userId: record.id,
+//                     },
+//                 },
+//                 res => {
+//                     console.log('res', res);
+//                     if (
+//                         res &&
+//                         get(res, ['code']) &&
+//                         parseInt(get(res, ['code']), 10) === 200 &&
+//                         get(res, ['result'])
+//                     ) {
+//                         // 成功
+//                         message.success('关联删除成功');
+//                     } else {
+//                         message.error('关联删除失败');
+//                     }
+//                 }
+//             );
+//         }
+//     }
+
+//     // 手动选择全部
+//     handleAllRowSelected(selected, selectedRows, changeRows) {
+//         const { alarmId } = this.props;
+//         const selectedChangeRowKeys = map(changeRows, item => item.id);
+//         if (selected) {
+//             scriptUtil.excuteScriptService(
+//                 {
+//                     objName: 'tb_alarm_dingtalk_user_map',
+//                     serviceName: 'batchAddDingtalkUserMap',
+//                     params: {
+//                         almId: alarmId,
+//                         users: String(selectedChangeRowKeys),
+//                     },
+//                 },
+//                 res => {
+//                     console.log('res', res);
+//                     if (
+//                         res &&
+//                         get(res, ['code']) &&
+//                         parseInt(get(res, ['code']), 10) === 200 &&
+//                         get(res, ['result'])
+//                     ) {
+//                         // 成功
+//                         message.success('关联成功');
+//                     } else {
+//                         message.error('关联失败');
+//                     }
+//                 }
+//             );
+//         } else {
+//             console.log('cancelSelectedAll', selectedRows, changeRows);
+//             scriptUtil.excuteScriptService(
+//                 {
+//                     objName: 'tb_alarm_dingtalk_user_map',
+//                     serviceName: 'batchDelDingtalkUserMap',
+//                     params: {
+//                         alarmId,
+//                         userIds: String(selectedChangeRowKeys),
+//                     },
+//                 },
+//                 res => {
+//                     console.log('res', res);
+//                     if (
+//                         res &&
+//                         get(res, ['code']) &&
+//                         parseInt(get(res, ['code']), 10) === 200 &&
+//                         get(res, ['result'])
+//                     ) {
+//                         // 成功
+//                         message.success('关联删除成功');
+//                     } else {
+//                         message.error('关联删除失败');
+//                     }
+//                 }
+//             );
+//         }
+//     }
+
+//     // 选择框内容改变事件
+//     searchKeyword(value) {
+//         console.log(value)
+//         this.setState(
+//             {
+//                 selectedRowKeys: [],
+//                 condition: value,
+//             },
+//             () => {
+//                 this.getTableData(value);
+//             }
+//         );
+//     }
+
+//     render() {
+//         const {
+//             tableData, // 钉钉人员表格数据
+//             tableLoading, // 钉钉人员表格加载状态
+//             currentTotal, // 钉钉人员表格总数
+//             selectedRowKeys, // 钉钉人员表格选中行
+//             condition, // 搜索框内容
+//         } = this.state;
+
+//         const columns = [
+//             {
+//                 title: '人员名称',
+//                 dataIndex: 'userName',
+//                 key: 'userName',
+//             },
+//             {
+//                 title: '人员id',
+//                 dataIndex: 'dingtalkUserId',
+//                 key: 'dingtalkUserId',
+//             },
+//         ];
+
+//         const rowSelection = {
+//             selectedRowKeys,
+//             onChange: this.handleSelectedRowKeyChange,
+//             onSelect: this.handleRowSelected,
+//             onSelectAll: this.handleAllRowSelected,
+//         };
+
+//         return (
+//             <div className="modalListContent">
+//                 <div className="modalListCondition">
+//                     <Input
+//                         placeholder="请输入查询内容"
+//                         className="listSearchInput"
+//                         suffix={
+//                             condition ? (
+//                                 <Icon
+//                                     type="close-circle"
+//                                     onClick={() => this.searchKeyword('')}
+//                                     className="modalSearchIcon"
+//                                 />
+//                             ) : (
+//                                     <Icon type="search" className="modalSearchIcon" />
+//                                 )
+//                         }
+//                         onChange={e => this.searchKeyword(e.target.value)}
+//                         value={condition}
+//                     />
+//                 </div>
+//                 <Table
+//                     className="modalTableStyle"
+//                     columns={columns}
+//                     dataSource={tableData}
+//                     loading={tableLoading}
+//                     rowKey={record => record.id}
+//                     rowSelection={rowSelection}
+//                     pagination={{
+//                         simple: true,
+//                         total: currentTotal,
+//                         // showTotal: (total, range) =>
+//                         //   `显示${range[0]}-${range[1]},共${total}条`,
+//                         // size: 'small',
+//                     }}
+//                     onChange={this.handleTableChange}
+//                 />
+//                 <div className="modalBodyButton">
+//                     <Button onClick={this.handleClose} className="modalCancelBtn">
+//                         关闭
+//                     </Button>
+//                 </div>
+//             </div>
+//         );
+//     }
+// }
+
+
 class DingTalkUser extends React.PureComponent {
     static propTypes = {
         alarmId: PropTypes.string.isRequired,
@@ -2685,8 +3010,15 @@ class DingTalkUser extends React.PureComponent {
             currentTotal: 0, // 钉钉人员表格总数
             selectedRowKeys: [], // 钉钉人员表格选中行
             condition: '', // 搜索内容
+            userList: [],
+            currenetUser:'',
+            serchUser: '',
+            emailList: [],
+            serchEmail: '',
+            fetching: false
         };
-
+        this.lastFetchId = 0;
+        this.fetchUser = debounce(this.fetchUser, 300);
         this.getTableData = this.getTableData.bind(this);
         this.handleClose = this.handleClose.bind(this);
         this.handleTableChange = this.handleTableChange.bind(this);
@@ -2697,10 +3029,78 @@ class DingTalkUser extends React.PureComponent {
 
     componentDidMount() {
         this.getTableData();
+        // this.getUsernameList();
+        // this.getEmailList();
     }
+    fetchUser = value => {
+        this.lastFetchId += 1;
+        const fetchId = this.lastFetchId;
+        this.setState({ userList: [], fetching: true });
+        setTimeout(() => {
+            if (fetchId !== this.lastFetchId) {
+                return;
+            }
+            this.setState({ userList: [{ userName: 1 }, { userName: 2 }], fetching: false });
+        }, 1000)
+    };
+
+    handleChange = currenetUser => {
+        this.setState({
+            currenetUser,
+            data: [],
+            fetching: false,
+        });
+    };
+    // getUsernameList() {
+    //     scriptUtil.excuteScriptService({
+    //         objName: 'common_service',
+    //         serviceName: 'getUsers',
+    //         params: {},
+    //         cb: (res) => {
+    //             if (
+    //                 res &&
+    //                 get(res, ['code']) &&
+    //                 parseInt(get(res, ['code']), 10) === 200 &&
+    //                 get(res, ['result'])
+    //             ) {
+    //                 const resultObj = get(res, ['result']);
+    //                 const { code, body } = resultObj;
+    //                 const resultData = JSON.parse(body);
+    //                 const userList = get(resultData, ['data'], []);
+    //                 console.log(userList);
+    //                 this.setState({
+    //                     userList
+    //                 })
+    //             }
+    //         }
+    //     })
+    // }
+    // getEmailList() {
+    //     scriptUtil.excuteScriptService({
+    //         objName: 'common_service',
+    //         serviceName: 'getEmails',
+    //         params: {},
+    //         cb: (res) => {
+    //             if (
+    //                 res &&
+    //                 get(res, ['code']) &&
+    //                 parseInt(get(res, ['code']), 10) === 200 &&
+    //                 get(res, ['result'])
+    //             ) {
+    //                 const resultObj = get(res, ['result']);
+    //                 const { code, body } = resultObj;
+    //                 const resultData = JSON.parse(body);
+    //                 const emailList = get(resultData, ['data'], []);
+    //                 this.setState({
+    //                     emailList
+    //                 })
+    //             }
+    //         }
+    //     })
+    // }
 
     // 获取钉钉个人modal表格数据
-    getTableData(condition = '', pageIndex = 1, pageSize = DEFAULT_SIZE) {
+    getTableData(condition = '', page = 1, pageSize = DEFAULT_SIZE) {
         const { alarmId } = this.props;
         this.setState(
             {
@@ -2709,12 +3109,12 @@ class DingTalkUser extends React.PureComponent {
             () => {
                 scriptUtil.excuteScriptService(
                     {
-                        objName: 'tb_alarm_dingtalk_user_map',
-                        serviceName: 'queryDingtalkUserMap',
+                        objName: 'common_service',
+                        serviceName: 'queryRelateUsers',
                         params: {
-                            alarmId,
-                            name: condition,
-                            pageIndex,
+                            // alarmId,
+                            // name: condition,
+                            page,
                             pageSize,
                         },
                     },
@@ -2730,17 +3130,17 @@ class DingTalkUser extends React.PureComponent {
                             const resultData = JSON.parse(body);
                             console.log('DingTalkUser', resultData);
                             const isSelectedList = [];
-                            forEach(resultData.list, item => {
-                                if (item.selected) {
-                                    isSelectedList.push(item.id);
+                            forEach(resultData.data.rows, item => {
+                                if (item.flag) {
+                                    isSelectedList.push(item.flag);
                                 }
                             });
-                            if (code === 200 || code === '200') {
+                            if (code === 201 || code === '201') {
                                 // 成功
                                 this.setState({
                                     tableLoading: false,
-                                    tableData: get(resultData, ['list'], []),
-                                    currentTotal: get(resultData, ['total'], 0),
+                                    tableData: get(resultData, ['data', 'rows'], []),
+                                    currentTotal: get(resultData, ['data', 'total'], 0),
                                     selectedRowKeys: isSelectedList,
                                 });
                                 // message.success('加载成功');
@@ -2919,19 +3319,31 @@ class DingTalkUser extends React.PureComponent {
             tableLoading, // 钉钉人员表格加载状态
             currentTotal, // 钉钉人员表格总数
             selectedRowKeys, // 钉钉人员表格选中行
-            condition, // 搜索框内容
+            condition, // 搜索框内容,
+            emailList,
+            userList,
+            currenetUser,
+            fetching
         } = this.state;
 
         const columns = [
             {
                 title: '人员名称',
+                width: '33.3%',
                 dataIndex: 'userName',
                 key: 'userName',
             },
             {
-                title: '人员id',
-                dataIndex: 'dingtalkUserId',
-                key: 'dingtalkUserId',
+                title: '钉钉ID',
+                width: '33.3%',
+                dataIndex: 'dingId',
+                key: 'dingId',
+            },
+            {
+                title: '邮箱（email）',
+                width: '33.4%',
+                dataIndex: 'email',
+                key: 'email',
             },
         ];
 
@@ -2945,7 +3357,43 @@ class DingTalkUser extends React.PureComponent {
         return (
             <div className="modalListContent">
                 <div className="modalListCondition">
-                    <Input
+                    <Row gutter={8}>
+                        <Col span={12}>
+                            <label>姓名：</label>
+                            <Select
+                                showSearch
+                                value={currenetUser}
+                                placeholder="选择姓名"
+                                defaultActiveFirstOption={false}
+                                notFoundContent={fetching ? <Spin size="small" /> : null}
+                                filterOption={false}
+                                onSearch={this.fetchUser}
+                                onChange={this.handleChange}
+                                style={{ width: "100%" }}
+                            >
+                                {userList.map(item => (
+                                    <Option value={item.userName} key={item.userName}>
+                                        {item.userName}
+                                    </Option>
+                                ))}
+                            </Select>
+                        </Col>
+
+                        <Col span={12}>
+                            <label>邮箱：</label>
+                            <Select
+                                defaultValue="lucy"
+                                style={{ width: "100%" }}
+                            >
+                                {emailList.map(item => (
+                                    <Option value={''}>
+                                        {item.email}
+                                    </Option>
+                                ))}
+                            </Select>
+                        </Col>
+                    </Row>
+                    {/* <Input
                         placeholder="请输入查询内容"
                         className="listSearchInput"
                         suffix={
@@ -2961,7 +3409,7 @@ class DingTalkUser extends React.PureComponent {
                         }
                         onChange={e => this.searchKeyword(e.target.value)}
                         value={condition}
-                    />
+                    /> */}
                 </div>
                 <Table
                     className="modalTableStyle"

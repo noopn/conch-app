@@ -1,61 +1,13 @@
 import React, { Component } from 'react';
-import { Button, DatePicker, Select, Table, Input, Popconfirm, Form, message, Row, Col, Spin, TimePicker } from 'antd';
+import { Button, DatePicker, Select, Table, Input, Spin, Form, message, Row, Col, TimePicker } from 'antd';
 import moment from 'moment';
-var css = document.createElement('style');
-css.type = 'text/css';
-css.innerHTML = `
-    .ant-table .ant-table-tbody > tr > td { 
-        white-space: nowrap;
-        border-bottom: 1px solid #e8e8e8;
-        padding: 4px;
-    }
-    .ant-table-body {
-      overflow: hidden;
-    }
-
-    .ant-table-bordered .ant-table-body > table {
-      border-left: none;
-      border-right: none;
-    }
-    .ant-table-thead {
-      border-bottom: 1px solid #e8e8e8;
-      border-top: 1px solid #e8e8e8;
-    }
-    .ant-table thead.ant-table-thead > tr > th {
-      background: transparent !important;
-      color: #444 !important;
-      font-weight: bold !important;
-    }
-    .ant-table thead.ant-table-thead > tr > th:last-child {
-      border: none
-    }
-    .ant-table-thead > tr > th {
-        text-align: center;
-    }
-    .ant-calendar-picker input {
-      border:none;
-      text-align:center
-    }
-    .ant-select-selection {
-      border:none
-    }
-    .ant-time-picker-input {
-        border:none !important
-    }
-    .ant-time-picker-icon {
-        right: 18px !important;
-    }
-    #appPreviewWrapper .ant-spin-container {
-        overflow: visible !important;
-    }
-    `;
-document.getElementsByTagName('head')[0].appendChild(css);
 
 const m2m = (time) => {
     const h = moment.duration(time, "minutes").asHours();
     const m = moment.duration(time, "minutes").minutes();
     return moment(`${h}:${m}`, 'HH:mm')
 }
+
 
 const EditableContext = React.createContext();
 
@@ -81,6 +33,7 @@ class EditableCell extends React.Component {
                         e.stopPropagation();
                     }, false)
                 }
+
                 if (dataIndex === 'CL') {
                     this.input.focus();
                 }
@@ -117,6 +70,7 @@ class EditableCell extends React.Component {
                     ],
                     initialValue: record[dataIndex],
                 })(<Input
+                    autofocus
                     ref={node => (this.input = node)}
                     onPressEnter={() => this.save(`${dataIndex}-${record.id}`)}
                     onBlur={() => this.save(`${dataIndex}-${record.id}`)}
@@ -161,41 +115,42 @@ class CustomComp extends Component {
         this.state = {
             data: [],
             proDate: moment().format(dateFormat),
-            team: "", // 班组
+            team: "夜班", // 班组
             buttonType: null,
             typeData: [],
             crusher: [],
             currentCrusher: '',
+            visable: false,
             message: '',
             runTime: moment('00：00', 'HH:mm'),
-            submiting: false,
             remark: '',
             submitType: 'insert',
+            selectType: 'team'
         };
         this.element = React.createRef()
     }
 
-    //   get teamOption() {
-    //     const arr = [];
-    //     if (moment(`${this.state.proDate} 08:00:00`, 'YYYY-MM-DD HH:mm:ss').valueOf() <= moment().valueOf()) {
-    //       arr.push({ key: '夜班', value: '夜班' })
-    //     }
-    //     if (moment(`${this.state.proDate} 16:00:00`, 'YYYY-MM-DD HH:mm:ss').valueOf() <= moment().valueOf()) {
-    //       arr.push({ key: '白班', value: '白班' })
-    //     }
-    //     if (moment(this.state.proDate, 'YYYY-MM-DD').endOf('day').valueOf() <= moment().valueOf()) {
-    //       arr.push({ key: '中班', value: '中班' })
-    //     }
-    //     if (!arr.length) {
-    //       arr.push({ key: 'null', value: '暂无班组查询' })
-    //     }
-    //     return arr;
+    // get teamOption() {
+    //   const arr = [];
+    //   if (moment(`${this.state.proDate} 08:00:00`, 'YYYY-MM-DD HH:mm:ss').valueOf() <= moment().valueOf()) {
+    //     arr.push({ key: '夜班', value: '夜班' })
     //   }
+    //   if (moment(`${this.state.proDate} 16:00:00`, 'YYYY-MM-DD HH:mm:ss').valueOf() <= moment().valueOf()) {
+    //     arr.push({ key: '白班', value: '白班' })
+    //   }
+    //   if (moment(this.state.proDate, 'YYYY-MM-DD').endOf('day').valueOf() <= moment().valueOf()) {
+    //     arr.push({ key: '中班', value: '中班' })
+    //   }
+    //   if (!arr.length) {
+    //     arr.push({ key: 'null', value: '暂无班组查询' })
+    //   }
+    //   return arr;
+    // }
     get teamOption() {
         const arr = [];
-        arr.push({ key: '夜班', value: '夜班' })
-        arr.push({ key: '白班', value: '白班' })
-        arr.push({ key: '中班', value: '中班' })
+        arr.push({ optionText: '夜班', optionValue: '夜班' })
+        arr.push({ optionText: '白班', optionValue: '白班' })
+        arr.push({ optionText: '中班', optionValue: '中班' })
         return arr;
     }
     columns = [
@@ -203,6 +158,7 @@ class CustomComp extends Component {
             title: '堆场',
             key: 'MineStockName',
             align: 'center',
+            width: '33.3%',
             dataIndex: 'MineStockName',
             render: (text, row,) => {
                 const obj = {
@@ -221,12 +177,14 @@ class CustomComp extends Component {
         },
         {
             title: '产品',
+            width: '33.3%',
             key: 'produce',
             align: 'center',
             dataIndex: 'produce',
         },
         {
             title: '产量',
+            width: '33.4%',
             key: 'CL',
             align: 'center',
             dataIndex: 'CL',
@@ -249,12 +207,29 @@ class CustomComp extends Component {
         });
         this.setState({ data: this.rowMount(newData.slice(0, -1)) });
     };
-    componentWillMount() {
-        this.setState({
-            team: this.teamOption[0].key
-        })
-    }
+
     componentDidMount() {
+        this.getlsCrusher()
+            .then(() => {
+                this.fetchData();
+            })
+        this.cancelRuntimeFullPage();
+        this.getUsersSessionInfo();
+        this.cancelConflictionEvent();
+    }
+    cancelConflictionEvent = () => {
+        if (this.element && this.element.current) {
+            ["touchstart", "touchmove", "touchend"].forEach((event) => {
+                this.element.current.addEventListener(event, (e) => {
+                    e.stopPropagation();
+                });
+            })
+        }
+    }
+    cancelRuntimeFullPage = () => {
+        document.getElementById('runtimePage') && (document.getElementById('runtimePage').children[0].style.display = 'none')
+    }
+    getUsersSessionInfo = () => {
         scriptUtil.getUserInfo(user => {
             scriptUtil.excuteScriptService({
                 objName: "ZLGL",
@@ -271,40 +246,12 @@ class CustomComp extends Component {
                 }
             });
         });
-        new Promise((resolve) => {
-            scriptUtil.excuteScriptService({
-                objName: "SCGL",
-                serviceName: "getmsCrusher",
-                params: {},
-                cb: (res) => {
-                    this.setState({
-                        crusher: res.result.list,
-                        currentCrusher: res.result.list[0].optionValue
-                    })
-                    resolve()
-                }
-            });
-        }).then(() => {
-            this.fetchData();
-        })
-        if (this.element && this.element.current) {
-            ["touchstart", "touchmove", "touchend"].forEach((event) => {
-                this.element.current.addEventListener(event, (e) => {
-                    e.stopPropagation();
-                });
-            })
-        }
-
     }
     onSerchKeyChange = (key, value) => {
         this.setState({
-            [key]: value
+            [key]: value,
+            showSlider: false
         }, () => {
-            if (key === 'proDate') {
-                this.setState({
-                    team: this.teamOption[0].key
-                })
-            }
             this.fetchData();
         })
     }
@@ -314,6 +261,22 @@ class CustomComp extends Component {
         if (!data.length) return [];
         const mount = data.reduce((mount, item) => { mount += Number(item.CL); return mount }, 0)
         return data.concat({ MineStockName: '合计', block: true, CL: mount })
+    }
+    getlsCrusher = () => {
+        return new Promise((resolve) => {
+            scriptUtil.excuteScriptService({
+                objName: "SCGL",
+                serviceName: "getlsCrusher",
+                params: {},
+                cb: (res) => {
+                    this.setState({
+                        crusher: res.result.list,
+                        currentCrusher: res.result.list[0].optionValue
+                    })
+                    resolve()
+                }
+            });
+        })
     }
     getRunTime = () => {
         let { proDate, team, currentCrusher } = this.state;
@@ -334,7 +297,23 @@ class CustomComp extends Component {
             }
         })
     }
-
+    runTimeChange = (runTime, timeStr) => {
+        this.setState({
+            runTime
+        })
+    }
+    showSelectSlide = (type) => {
+        this.setState({
+            showSlider: true,
+            selectType: type
+        })
+    }
+    hiddenSelectSlide = (e) => {
+        e.stopPropagation();
+        this.setState({
+            showSlider: false
+        })
+    }
     fetchData = () => {
         let { proDate, team, currentCrusher } = this.state;
         // proDate = proDate.split('-').map(item => Number(item)).join('-');
@@ -346,6 +325,7 @@ class CustomComp extends Component {
             visable: true,
             message: '加载中。。。',
         })
+
         scriptUtil.excuteScriptService({
             objName: "SCGL",
             serviceName: "GetDiggReport",
@@ -364,14 +344,14 @@ class CustomComp extends Component {
                             day: proDate,
                             crush: currentCrusher,
                             shift: team,
-                            type: "砂岩"
+                            type: "石灰石"
                         },
                         cb: (res) => {
                             this.setState({
                                 data: this.rowMount(res.result.list),
                                 remark: '',
-                                message: '',
                                 visable: false,
+                                message: '',
                                 submitType: 'insert',
                             })
                         }
@@ -381,7 +361,7 @@ class CustomComp extends Component {
                     const item = res.result.list[0];
                     this.setState({
                         data: this.rowMount(res.result.list),
-                        remark: res.result.list[0].remark,
+                        remark: item.remark,
                         runTime: m2m(item.duration),
                         submitType: 'update',
                         visable: false,
@@ -390,11 +370,6 @@ class CustomComp extends Component {
                 }
             }
         });
-    }
-    runTimeChange = (runTime, timeStr) => {
-        this.setState({
-            runTime
-        })
     }
     handleSaveSubmit = () => {
         let { data, runTime, proDate, currentCrusher, team } = this.state;
@@ -458,13 +433,11 @@ class CustomComp extends Component {
                 }
             });
         })
+
     }
     handleEditSubmit = () => {
         const { data, runTime } = this.state;
-        this.setState({
-            submiting: true
-        })
-        const promiseData = data.slice(0, -1).map(item => new Promise((resolve) => {
+        const promiseData = data.slice(0, -1).map(item => new Promise((resolve, reject) => {
             const jsonData = {
                 update: {
                     CL: Number(item.CL),
@@ -487,7 +460,7 @@ class CustomComp extends Component {
                     }
                 }
             });
-        })).concat(new Promise(resolve => {
+        })).concat(new Promise((resolve, reject) => {
             scriptUtil.excuteScriptService({
                 objName: "crusherreport",
                 serviceName: "UpdateDataTableEntry",
@@ -513,7 +486,7 @@ class CustomComp extends Component {
                 }
             });
         }))
-        Promise.all(promiseData).then(res => {
+        return Promise.all(promiseData).then(res => {
             message.success('修改成功')
         }).catch(err => {
             message.error('修改失败')
@@ -550,6 +523,7 @@ class CustomComp extends Component {
                     } else {
                         resolve(res.result);
                     }
+
                 }
             });
         }).then(res => {
@@ -583,68 +557,71 @@ class CustomComp extends Component {
                 params: {
                     updateData: JSON.stringify(jsonData)
                 },
-                cb: () => {}
+                cb: () => { }
             });
         })
     }
     render() {
-        const { proDate, team, data, currentCrusher, runTime, remark, visable, message, submitType } = this.state;
+        const { proDate, team, data, currentCrusher, crusher, runTime, remark, visable, message, submitType, showSlider, selectType } = this.state;
         const components = {
             body: {
                 row: EditableFormRow,
                 cell: EditableCell,
             },
         };
+        const optionsMap = {
+            team: this.teamOption,
+            currentCrusher: crusher
+        }
+        const stateKeyMap = {
+            team,
+            currentCrusher,
+        }
         return (
             <Spin tip={message} spinning={visable}>
-                <div style={containerWrapper} ref={this.element}>
-                    <div style={serchHeader}>
-                        <Row>
-                            <Col span={5} style={borderTopRight}>
-                                <label style={headerLabel}>日期：</label>
+                <div className='supos-comp-wrapper' ref={this.element}>
+                    <div className='serchHeader'>
+
+                        <Row className='header-table-row'>
+                            <Col span={12} className='header-table-col'>
+                                <div className='header-table-col-th'>日期</div>
+                                <div className='header-table-col-td'>
+                                    <DatePicker
+                                        onChange={(D, dateString) => this.onSerchKeyChange('proDate', dateString)}
+                                        defaultValue={moment(proDate)}
+                                        suffixIcon={() => null}
+                                    >
+                                    </DatePicker>
+                                </div>
+
                             </Col>
-                            <Col span={7} style={borderTopRight}>
-                                <DatePicker
-                                    // disabledDate={this.disabledDate}
-                                    style={datePickerStyle}
-                                    onChange={(D, dateString) => this.onSerchKeyChange('proDate', dateString)}
-                                    defaultValue={moment(proDate)}
-                                    suffixIcon={() => null}
+                            <Col span={12} className='header-table-col'>
+                                <div className='header-table-col-th'>班组</div>
+                                <div
+                                    className='header-table-col-td'
+                                    onClick={() => this.showSelectSlide('team')}
                                 >
-                                </DatePicker>
+                                    <span>{team}</span>
+                                    <i className='select-icon'></i>
+                                </div>
                             </Col>
-                            <Col span={5} style={borderTopRight}>
-                                <label style={headerLabel}>班组：</label>
-                            </Col>
-                            <Col span={7} style={Object.assign({}, borderTopRight, rightBorderNone)}>
-                                <Select
-                                    style={selectStyle}
-                                    value={team}
-                                    onChange={(value) => this.onSerchKeyChange('team', value)}
+                            <Col span={12} className='header-table-col'>
+                                <div className='header-table-col-th'>破碎机</div>
+                                <div
+                                    className='header-table-col-td'
+                                    onClick={() => this.showSelectSlide('currentCrusher')}
                                 >
-                                    {this.teamOption.map(item => <Select.Option value={item.key}>{item.value}</Select.Option>)}
-                                </Select>
+                                    <span>{!!crusher.length && crusher.find(item => item.optionValue === currentCrusher).optionText}</span>
+                                    <i className='select-icon'></i>
+                                </div>
                             </Col>
-                        </Row>
-                        <Row>
-                            <Col span={5} style={borderTopRight}>
-                                <label style={headerLabel}>破碎机：</label>
-                            </Col>
-                            <Col span={7} style={borderTopRight}>
-                                <Select
-                                    style={selectStyle}
-                                    value={currentCrusher}
-                                    onChange={(value) => this.onSerchKeyChange('currentCrusher', value)}
+                            <Col span={12} className='header-table-col'>
+                                <div className='header-table-col-th'>运行时长</div>
+                                <div
+                                    className='header-table-col-td'
                                 >
-                                    {this.state.crusher.map(item => <Select.Option value={item.optionValue}>{item.optionText}</Select.Option>)}
-                                </Select>
-                            </Col>
-                            <Col span={5} style={borderTopRight}>
-                                <label style={headerLabel}>运行时长：</label>
-                            </Col>
-                            <Col span={7} style={Object.assign({}, borderTopRight, rightBorderNone)}>
-                                {/* <Input value={runTime} onChange={(e) => this.setState({ runTime: e.target.value })} /> */}
-                                <TimePicker value={runTime} format={'HH:mm'} onChange={this.runTimeChange} />
+                                    <TimePicker value={runTime} format={'HH:mm'} onChange={this.runTimeChange} />
+                                </div>
                             </Col>
                         </Row>
                     </div>
@@ -656,18 +633,40 @@ class CustomComp extends Component {
                         pagination={false}
                         bordered
                     />
-                    <div style={remarkWrapper}>
-                        <label>备注</label>
-                        <input style={remarkInput} value={remark} onInput={this.remarkChange} />
+                    <div className='remarkWrapper'>
+                        <label className='remark-lable'>备注</label>
+                        <input className='remarkInput' value={remark} onInput={this.remarkChange} />
                     </div>
                     <Button
-                        style={submitButton}
+                        className='submitButton'
                         type='submit'
                         onMouseDown={(e) => {
                             this.submit()
                         }}
                     >{submitType === 'insert' ? '保存' : '修改'}</Button>
                 </div >
+                <div
+                    className='fixed-wrapper'
+                    style={{ visibility: showSlider ? "visible" : 'hidden' }}
+                >
+                    <div
+                        className='mask'
+                        onTouchEnd={this.hiddenSelectSlide}
+                    ></div>
+                    <div
+                        className={`slider ${showSlider ? 'slider-active' : ''}`}
+                    >
+                        {optionsMap[selectType].map(item => (
+                            <div
+                                className={`slider-item ${item.optionValue === stateKeyMap[selectType] ? "slider-item-active" : ''}`}
+                                onTouchEnd={() => this.onSerchKeyChange(selectType, item.optionValue)}
+                            >
+                                {item.optionText}
+                                {item.optionValue === stateKeyMap[selectType] && <i className='item-check-icon'></i>}
+                            </div>
+                        ))}
+                    </div>
+                </div>
             </Spin>
         );
     }
@@ -675,67 +674,217 @@ class CustomComp extends Component {
 
 export default CustomComp;
 
-const containerWrapper = {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    margin: 'auto'
+var css = document.createElement('style');
+css.id = 'CustomCompStyle';
+css.innerHTML = `
+.supos-comp-wrapper .ant-table .ant-table-tbody > tr > td { 
+    white-space: nowrap;
+    border-bottom: 1px solid #e8e8e8;
+    padding: 4px;
 }
-const remarkWrapper = {
-    display: 'flex',
-    alignItems: 'center',
-    lineHeight: '44px',
-    paddingLeft: '20px',
-    borderBottom: '1px solid #e8e8e8'
-}
-const remarkInput = {
-    flex: 1,
-    border: 'none',
-    marginLeft: '20px',
-    /* display: table-cell; */
-    width: '200px',
-    height: '36px',
-    paddingLeft: '20px',
-    border: '1px solid #e8e8e8'
-}
-const headerLabel = {
-    whiteSpace: 'nowrap'
-}
-const borderTopRight = {
-    borderTop: '1px solid #e8e8e8',
-    borderRight: '1px solid #e8e8e8',
-    textAlign: 'center',
-    lineHeight: '40px'
-}
-const rightBorderNone = {
-    borderRight: 'none'
-}
-const serchHeader = {
-    overflow: 'hidden',
-    marginTop: '10px'
+.supos-comp-wrapper .ant-table-body {
+  overflow: hidden;
 }
 
-const serchHeaderItem = {
-    margin: '0 10px'
+.supos-comp-wrapper .ant-table-bordered .ant-table-body > table {
+  border-left: none;
+  border-right: none;
 }
-// 日历控件样式
-const datePickerStyle = {
-    width: '100%'
+.supos-comp-wrapper .ant-table-thead {
+  border-bottom: 1px solid #e8e8e8;
+  border-top: 1px solid #e8e8e8;
+  background: #F1F4FA;
 }
-// 下拉框样式
-const selectStyle = {
-    width: '100%'
+.supos-comp-wrapper .ant-table thead.ant-table-thead > tr > th {
+    background: transparent !important;
+    font-weight: bold !important;
+    padding: 11px 0 11px 0;
+    font-size: 14px;
+    color: #1F2E4D;
 }
-const submitButton = {
-    position: 'fixed',
-    width: '100%',
-    height: '40px',
-    left: 0,
-    bottom: 0,
-    background: '#4579bb',
-    color: '#fff',
-    lineHeight: '40px',
-    textAlign: 'center'
+.supos-comp-wrapper .ant-table thead.ant-table-thead > tr > th:last-child {
+  border: none
 }
+.supos-comp-wrapper .ant-table-thead > tr > th {
+    text-align: center;
+}
+.supos-comp-wrapper .edit-th-p {
+    text-align: center;
+    font-size: 14px;
+    height: 40px;
+    line-height: 40px;
+    padding: 0px;
+    margin: 0px;
+    color: #333;
+}
+.supos-comp-wrapper .ant-calendar-picker {
+    
+}
+.supos-comp-wrapper .ant-calendar-picker input {
+  border:none;
+  text-align:center;
+  font-size: 14px;
+}
+.supos-comp-wrapper .ant-select-selection {
+  border:none
+}
+#appPreviewWrapper .ant-spin-container {
+    overflow: visible !important;
+}
+.supos-comp-wrapper{
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    margin: auto;
+    font-family: PingFangSC-Regular;
+}
+.supos-comp-wrapper .remarkWrapper {
+    display: flex;
+    align-items: center;
+    line-height: 44px;
+    border-bottom: 1px solid #e8e8e8;
+}
+.supos-comp-wrapper .remarkWrapper .remark-lable {
+    width: 33.3%;
+    display: inline-block;
+    text-align: center;
+}
+.supos-comp-wrapper .remarkInput {
+    flex: 1;
+    width: 66%;
+    height: 36px;
+    padding-left: 20px;
+    border: 1px solid #e8e8e8;
+    border-radius: 4px;
+}
+.supos-comp-wrapper  .ant-time-picker {
+    width: 100%;
+}
+.supos-comp-wrapper .ant-time-picker-input {
+    width: 100%;
+    border: none;
+    text-align: center;
+    color: #1F2E4D;
+}
+.ant-time-picker-icon {
+    right: 20px !important;
+}
+.supos-comp-wrapper .header-table-row {
+    margin-right: -2px;
+}
+.supos-comp-wrapper .ant-row .ant-input:focus,
+.supos-comp-wrapper .ant-form-item .ant-input:focus {
+    box-shadow: none !important;
+    border-color: #D3DBEB !important;
+}
+.supos-comp-wrapper .header-table-col-th {
+    position:relative;
+    background: #F1F4FA;
+    border-top: 1px solid #E6E9F0;
+    border-right: 1px solid #E6E9F0;
+    font-size: 14px;
+    color: #1F2E4D;
+    text-align: center;
+    height:40px;
+    line-height:40px;
+    font-weight: 600;
+}
+.supos-comp-wrapper .header-table-col-td {
+    position:relative;
+    border-top: 1px solid #E6E9F0;
+    border-right: 1px solid #E6E9F0;
+    font-size: 14px;
+    color: #1F2E4D;
+    text-align: center;
+    height:40px;
+    line-height:40px;
+}
+.supos-comp-wrapper .select-icon{
+    border-width: 6px 6px 0 6px;
+    border-color: #8F9BB3 transparent transparent transparent;
+    display: inline-block;
+    border-style: solid;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    margin: auto;
+    right: 20px;
+    height: 0px;
+}
+.fixed-wrapper .mask{
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    left: 0;
+    top: 0;
+    background: rgba(0,0,0,0.40);
+    z-index:99;
+    cursor: pointer
+}
+.fixed-wrapper .slider {
+    position: fixed;
+    z-index: 100;
+    min-height: 300px;
+    background: #fff;
+    border-radius: 10px 10px 0 0;
+    padding: 0 16px;
+    width: 100%;
+    bottom: 0;
+    left: 0;
+    transition: transform 0.3s ease-out;
+    transform: translateY(100%);
+}
+.fixed-wrapper .slider.slider-active {
+    transform: translateY(0);
+}
+.fixed-wrapper .slider-item {
+    height: 46px;
+    line-height: 46px;
+    margin: 16px 0;
+    background: #FBFBFB;
+    border-radius: 10px;
+    font-size: 16px;
+    color: #3F3F3F;
+    padding: 0 30px;
+}
+.fixed-wrapper .slider-item-active {
+    background: rgba(0,147,255,0.10);
+    border: 1px solid #0093FF;
+    position:relative;
+}
+.fixed-wrapper .slider-item-active .item-check-icon {
+    display:inline-block;
+    width: 8px;
+    height: 16px;
+    border-color: #0495ff;
+    border-style: solid;
+    border-width: 0 3px 3px 0;
+    transform: rotate(45deg);
+    transform-origin: top;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    margin: auto;
+    right: 30px;
+}
+.supos-comp-wrapper  .submitButton {
+    position: fixed;
+    width: 100%;
+    height: 50px;
+    left: 0;
+    bottom: 0;
+    font-size: 18px;
+    background: #2D7DF6;
+    color: #fff;
+    line-height: 50px;
+    text-align: center;
+}
+.supos-comp-wrapper button.ant-btn:hover,
+.supos-comp-wrapper button.ant-btn:focus {
+    color: #fff;
+}
+`;
+
+document.getElementsByTagName('head')[0].appendChild(css);

@@ -50,7 +50,7 @@ css.innerHTML = `
 document.getElementsByTagName('head')[0].appendChild(css);
 const EditableContext = React.createContext();
 
-const Factory = '制造一';
+const Factory = '制造二';
 const Type = '原料磨';
 
 const EditableRow = ({ form, index, ...props }) => (
@@ -446,6 +446,9 @@ class CustomComp extends Component {
     }
     handleEditSubmit = () => {
         const { data } = this.state;
+        this.setState({
+            submiting: true
+        })
         const promiseData = data.slice(0, -1).map(item => new Promise((resolve, reject) => {
             const jsonData = {
                 update: {
